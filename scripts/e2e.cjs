@@ -27,8 +27,12 @@ function check(name, ok, detail = '') {
   try { await run() } catch (e) {
     console.error('✘ ERROR:', e.message.split('\n')[0])
     if (win) {
-      await win.screenshot({ path: path.join(S, 'shots', 'fallo.png') }).catch(() => {})
-      console.error('pantalla:', ((await win.textContent('.modal').catch(() => null)) ?? (await win.textContent('main').catch(() => ''))).slice(0, 600))
+      await win.screenshot({ path: path.join(S, 'shots', 'fallo.png'), timeout: 5000 }).catch(() => {})
+      const text = await Promise.race([
+        win.evaluate(() => (document.querySelector('.modal') ?? document.querySelector('main'))?.textContent ?? ''),
+        new Promise((r) => setTimeout(() => r('(la ventana no responde)'), 5000))
+      ]).catch((err) => `(error: ${err.message})`)
+      console.error('pantalla:', String(text).slice(0, 600))
     }
     console.error('resultados en', S)
     process.exit(1)
@@ -41,6 +45,11 @@ function check(name, ok, detail = '') {
     env: { ...process.env, FOTOGESTOR_DATA_DIR: path.join(S, 'data') }
   })
   const errors = []
+  // Salida del proceso principal: se muestra si la prueba falla.
+  const mainLog = []
+  app.process().stdout.on('data', (d) => mainLog.push(String(d)))
+  app.process().stderr.on('data', (d) => mainLog.push(String(d)))
+  process.on('exit', (code) => { if (code) console.error('--- proceso principal ---\n' + mainLog.join('').slice(-4000)) })
   win = await app.firstWindow()
   win.on('pageerror', (e) => errors.push(e.message))
   win.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
@@ -88,7 +97,8 @@ function check(name, ok, detail = '') {
   // --- Importación (JPEG + RAW) ---
   await stubOpen(path.join(S, 'imgs'))
   await win.click('.dropzone button')
-  await win.waitForFunction((n) => document.querySelectorAll('.thumb img').length === n, expectedPhotos, { timeout: 60000 })
+  await win.waitForFunction((n) => document.querySelectorAll('.thumb img').length === n
+    || /error|importadas/.test(document.querySelector('.toast')?.textContent ?? ''), expectedPhotos, { timeout: 60000 })
   check('importación', (await toast()).includes(`${expectedPhotos} importadas`), await win.textContent('.toast'))
   if (process.env.E2E_RAW) check('distintivo RAW', (await win.locator('.raw-badge').count()) === 1)
   await win.click('button:has-text("+ Importar fotos")')

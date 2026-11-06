@@ -49,6 +49,16 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Prueba de extremo a extremo
         run: xvfb-run -a npm run test:e2e
+        env:
+          KEEP_E2E: '1'
+      - name: Guardar capturas de la prueba
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e
+          path: /tmp/fotogestor-e2e-*/
+          if-no-files-found: ignore
+          retention-days: 7
 
   release:
     needs: [check, test]
