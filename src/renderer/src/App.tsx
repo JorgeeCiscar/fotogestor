@@ -3,6 +3,7 @@ import Dashboard from './components/Dashboard'
 import ClientsView from './components/ClientsView'
 import SessionsView from './components/SessionsView'
 import SessionDetail from './components/SessionDetail'
+import LibraryView from './components/LibraryView'
 import SearchView from './components/SearchView'
 import InvoicesView from './components/InvoicesView'
 import SettingsView from './components/SettingsView'
@@ -12,6 +13,7 @@ export type View =
   | { name: 'dashboard' }
   | { name: 'clients' }
   | { name: 'sessions'; clientId?: number }
+  | { name: 'library' }
   | { name: 'session'; id: number; photoId?: number }
   | { name: 'search'; q?: string }
   | { name: 'invoices'; openId?: number; newForSession?: number }
@@ -20,6 +22,7 @@ export type View =
 const NAV: [View['name'], string][] = [
   ['dashboard', 'Panel'],
   ['sessions', 'Sesiones'],
+  ['library', 'Fotos'],
   ['clients', 'Clientes'],
   ['invoices', 'Facturación'],
   ['search', 'Buscar'],
@@ -59,6 +62,7 @@ export default function App() {
         {view.name === 'dashboard' && <Dashboard nav={nav} />}
         {view.name === 'clients' && <ClientsView nav={nav} />}
         {view.name === 'sessions' && <SessionsView nav={nav} clientId={view.clientId} />}
+        {view.name === 'library' && <LibraryView nav={nav} />}
         {view.name === 'session' && <SessionDetail key={view.id} id={view.id} photoId={view.photoId} nav={nav} />}
         {view.name === 'search' && <SearchView nav={nav} initial={view.q} />}
         {view.name === 'invoices' && <InvoicesView nav={nav} openId={view.openId} newForSession={view.newForSession} />}

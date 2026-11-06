@@ -5,7 +5,7 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
 
 **Stack:** Electron · React · TypeScript · Vite (electron-vite) · SQLite (`node:sqlite`, integrado en Electron) · sharp · exifr
 
-## Funcionalidades (v0.3)
+## Funcionalidades (v0.4)
 
 - **Clientes**: datos de contacto, NIF y dirección (para facturas), búsqueda y número de sesiones.
 - **Sesiones**: cliente, tipo, fecha, lugar, precio, notas, etiquetas y estado
@@ -15,6 +15,9 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
   el original se copia intacto. Lee EXIF (cámara, objetivo, exposición, fecha) y omite duplicados.
 - **Selección por teclado**: `P` elegir, `X` descartar, `U` quitar marca, `0–5` estrellas, `T` etiquetar,
   flechas, `Enter` visor, `Ctrl/Shift + clic` y `Ctrl+A` para selección múltiple.
+- **Fototeca** («Fotos»): todas las fotos de todas las sesiones, filtrables por una o varias sesiones,
+  cliente, marca, valoración, etiqueta, RAW y texto. Selección múltiple y copia a una carpeta
+  (opcionalmente una subcarpeta por sesión) o arrastrando las fotos al Explorador.
 - **Etiquetas** en fotos y sesiones, filtro por etiqueta y **búsqueda global** (`Ctrl+K`) de clientes,
   sesiones y fotos (nombre de archivo, etiqueta, cámara, objetivo).
 - **Galería para el cliente**: un único `.html` con las fotos (con marca de agua opcional). El cliente lo

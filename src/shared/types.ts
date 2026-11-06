@@ -163,6 +163,22 @@ export interface UpdateStatus {
   message?: string
 }
 
+export type LibrarySort = 'date_desc' | 'date_asc' | 'rating' | 'session' | 'name'
+export interface LibraryFilter {
+  sessionIds?: number[]
+  clientId?: number
+  flag?: 'pick' | 'reject' | 'none' | 'client'
+  minRating?: number
+  tag?: string
+  q?: string
+  rawOnly?: boolean
+  sort?: LibrarySort
+}
+export type LibraryPhoto = Photo & { session_title: string; session_date: string | null; client_name: string | null }
+export interface LibraryPage { photos: LibraryPhoto[]; total: number }
+export interface CopyOptions { bySession: boolean }
+export interface CopyProgress { done: number; total: number }
+
 export interface Api {
   clients: {
     list(): Promise<Client[]>
@@ -185,6 +201,13 @@ export interface Api {
     addTag(ids: number[], tag: string): Promise<void>
     removeTag(ids: number[], tag: string): Promise<void>
     onImportProgress(cb: (p: ImportProgress) => void): () => void
+  }
+  library: {
+    query(filter: LibraryFilter, offset: number, limit: number): Promise<LibraryPage>
+    ids(filter: LibraryFilter): Promise<number[]>
+    copyTo(ids: number[], opts: CopyOptions): Promise<{ copied: number; folder: string } | null>
+    startDrag(ids: number[]): void
+    onCopyProgress(cb: (p: CopyProgress) => void): () => void
   }
   tags(): Promise<string[]>
   search(q: string): Promise<SearchResults>

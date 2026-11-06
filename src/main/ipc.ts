@@ -8,6 +8,7 @@ import { transaction, type DB } from './db'
 import { registerGalleryIpc } from './gallery'
 import { collectFiles, importPhotos, SUPPORTED_EXT } from './importer'
 import { registerInvoiceIpc } from './invoices'
+import { registerLibraryIpc } from './library'
 import { registerSettingsIpc } from './settings'
 import { LocalStorage, sessionKey } from './storage'
 
@@ -234,4 +235,5 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
   registerSettingsIpc(db)
   registerInvoiceIpc(db)
   registerGalleryIpc(db, storage)
+  registerLibraryIpc(db, storage)
 }

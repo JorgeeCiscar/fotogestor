@@ -230,6 +230,65 @@ function check(name, ok, detail = '') {
   })
   check('factura emitida no eliminable', delErr.includes('no se puede eliminar'), delErr.slice(0, 90))
 
+  // --- Fototeca: todas las fotos, filtro por sesión, selección y copia ---
+  // Segunda sesión con 2 fotos cuyos nombres coinciden con los de la primera.
+  const imgs2 = path.join(S, 'imgs2'); fs.mkdirSync(imgs2)
+  for (const f of ['DSCF1000.jpg', 'DSCF1001.jpg']) fs.copyFileSync(path.join(S, 'imgs', f), path.join(imgs2, f))
+  await win.click('nav >> text=Sesiones'); await win.click('text=+ Nueva sesión')
+  await win.fill('.modal label:has-text("Título") input', 'Retrato Marta')
+  await win.click('.modal button:has-text("Guardar")')
+  await win.waitForSelector('.dropzone')
+  await stubOpen(imgs2)
+  await win.click('.dropzone button')
+  await win.waitForFunction(() => document.querySelectorAll('.thumb img').length === 2, null, { timeout: 60000 })
+
+  await win.click('nav >> text=Fotos')
+  const libCount = async () => { await win.waitForTimeout(500); return win.locator('.lib-thumb').count() }
+  check('fototeca: todas las fotos', (await libCount()) === expectedPhotos + 2, `${await win.locator('.lib-thumb').count()}`)
+  await win.click('.lib-session:has-text("Retrato Marta") input')
+  check('fototeca: filtro por una sesión', (await libCount()) === 2)
+  await win.click('.lib-session:has-text("Boda Ana y Luis") input')
+  check('fototeca: filtro por dos sesiones', (await libCount()) === expectedPhotos + 2)
+  await win.click('.lib-session:has-text("Retrato Marta") input')
+  check('fototeca: solo la primera sesión', (await libCount()) === expectedPhotos)
+  await win.click('button:has-text("Ver todas")')
+  await win.selectOption('select[aria-label="Marca"]', 'pick')
+  check('fototeca: filtro elegidas', (await libCount()) === 3)
+  await win.click('button:has-text("Quitar filtros")')
+  await win.fill('.lib-main .search', 'ceremonia')
+  check('fototeca: búsqueda por etiqueta', (await libCount()) === 2)
+  await win.click('button:has-text("Quitar filtros")')
+  await win.waitForTimeout(400)
+
+  // Selección: clic, Ctrl+clic, Shift+clic y Ctrl+A.
+  await win.click('.lib-thumb >> nth=0')
+  await win.click('.lib-thumb >> nth=2', { modifiers: ['Control'] })
+  check('fototeca: Ctrl+clic', (await win.locator('.lib-thumb.selected').count()) === 2)
+  await win.click('.lib-thumb >> nth=5', { modifiers: ['Shift'] })
+  check('fototeca: Shift+clic', (await win.locator('.lib-thumb.selected').count()) === 4)
+  await win.keyboard.press('Control+a'); await win.waitForTimeout(300)
+  check('fototeca: Ctrl+A', (await win.textContent('.lib-selbar strong')).startsWith(String(expectedPhotos + 2)))
+  await shot('fototeca')
+
+  // Copiar todas en una sola carpeta: los nombres repetidos no se sobrescriben.
+  const flat = path.join(S, 'out', 'copia'); fs.mkdirSync(flat)
+  await stubOpen(flat)
+  await win.click('button:has-text("Copiar a carpeta")')
+  check('fototeca: copia', (await toast()).includes(`${expectedPhotos + 2} fotos copiadas`), await win.textContent('.toast'))
+  const flatFiles = fs.readdirSync(flat)
+  check('fototeca: nombres repetidos conservados', flatFiles.length === expectedPhotos + 2 && flatFiles.includes('DSCF1000 (2).jpg'), flatFiles.join(', '))
+  // Copiar en subcarpetas por sesión.
+  const nested = path.join(S, 'out', 'por-sesion'); fs.mkdirSync(nested)
+  await stubOpen(nested)
+  await win.click('.lib-selbar label:has-text("Una carpeta por sesión") input')
+  await win.click('button:has-text("Copiar a carpeta")')
+  await win.waitForFunction(() => document.querySelector('.toast')?.textContent?.includes('por-sesion'))
+  const dirs = fs.readdirSync(nested).sort()
+  check('fototeca: carpetas por sesión', dirs.join('|') === 'Boda Ana y Luis|Retrato Marta'
+    && fs.readdirSync(path.join(nested, 'Retrato Marta')).length === 2, dirs.join(', '))
+  await win.keyboard.press('Escape')
+  check('fototeca: Esc quita la selección', (await win.locator('.lib-thumb.selected').count()) === 0)
+
   // --- Panel ---
   await win.click('nav >> text=Panel'); await win.waitForTimeout(500)
   const panel = await win.textContent('.page')

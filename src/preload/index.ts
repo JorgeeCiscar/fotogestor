@@ -24,6 +24,13 @@ const api: Api = {
     removeTag: invoke('photos:removeTag'),
     onImportProgress: (cb) => subscribe('photos:import-progress', cb)
   },
+  library: {
+    query: invoke('library:query'),
+    ids: invoke('library:ids'),
+    copyTo: invoke('library:copyTo'),
+    startDrag: (ids: number[]) => ipcRenderer.send('library:startDrag', ids),
+    onCopyProgress: (cb) => subscribe('library:copy-progress', cb)
+  },
   tags: invoke('tags'),
   search: invoke('search'),
   gallery: {
