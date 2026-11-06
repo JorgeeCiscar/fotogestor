@@ -22,10 +22,15 @@ function worker(): UtilityProcess {
     pending.delete(msg.id)
     msg.ok ? p.resolve(msg.result) : p.reject(new Error(msg.error))
   })
+  const fail = (reason: string) => {
+    if (child === proc) child = null
+    for (const [id, p] of pending) { pending.delete(id); p.reject(new Error(reason)) }
+  }
+  // 'error': fallo fatal dentro del proceso (Electron ≥ 30); 'exit': el proceso terminó.
+  proc.on('error', (type: string) => { fail(`El procesador de imágenes falló (${type})`); proc.kill() })
   proc.on('exit', (code) => {
     // Si el proceso cae (p. ej. una imagen corrupta), fallan sus trabajos y se relanza en el siguiente.
-    if (child === proc) child = null
-    for (const [id, p] of pending) { pending.delete(id); p.reject(new Error(`El procesador de imágenes se detuvo (código ${code})`)) }
+    fail(`El procesador de imágenes se detuvo (código ${code})`)
   })
   child = proc
   return proc

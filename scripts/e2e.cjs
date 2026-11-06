@@ -9,9 +9,9 @@ const { execFileSync } = require('node:child_process')
 const { _electron, chromium } = require('playwright')
 
 const ROOT = path.resolve(__dirname, '..')
-const S = fs.mkdtempSync(path.join(os.tmpdir(), 'fotogestor-e2e-'))
+const S = fs.mkdtempSync(path.join(process.env.E2E_OUT || os.tmpdir(), 'fotogestor-e2e-'))
 for (const d of ['imgs', 'data', 'shots', 'out']) fs.mkdirSync(path.join(S, d))
-execFileSync('node', [path.join(__dirname, 'make-test-images.cjs'), path.join(S, 'imgs')])
+execFileSync(process.execPath, [path.join(__dirname, 'make-test-images.cjs'), path.join(S, 'imgs')])
 if (process.env.E2E_RAW) fs.copyFileSync(process.env.E2E_RAW, path.join(S, 'imgs', path.basename(process.env.E2E_RAW)))
 const expectedPhotos = fs.readdirSync(path.join(S, 'imgs')).length
 console.log('directorio de prueba:', S)
@@ -166,7 +166,7 @@ function check(name, ok, detail = '') {
   const page = await browser.newPage({ viewport: { width: 1200, height: 800 } })
   const pageErrors = []
   page.on('pageerror', (e) => pageErrors.push(e.message))
-  await page.goto('file://' + galleryFile)
+  await page.goto(require('node:url').pathToFileURL(galleryFile).href)
   await page.click('.item:nth-child(1) .heart'); await page.click('.item:nth-child(3) .heart')
   check('contador de favoritas', (await page.textContent('#counter')) === '2 favoritas')
   await page.screenshot({ path: path.join(S, 'shots', 'galeria-cliente.png') })
