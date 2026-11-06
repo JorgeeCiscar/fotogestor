@@ -110,7 +110,7 @@ function check(name, ok, detail = '') {
   await win.click('.modal button:has-text("Guardar")')
   await win.waitForSelector('td:has-text("Marc Pérez")')
   const pilotRow = (await win.textContent('tr:has-text("Marc Pérez")')).replace(/\s+/g, ' ')
-  check('piloto: datos en la lista', /#46/.test(pilotRow) && pilotRow.includes('Speed Racing Team') && pilotRow.includes('Menor (16 años)') && pilotRow.includes('@marc46'), pilotRow)
+  check('piloto: datos en la lista', pilotRow.startsWith('46Marc Pérez') && pilotRow.includes('Speed Racing Team') && pilotRow.includes('Menor (16 años)') && pilotRow.includes('@marc46'), pilotRow)
   const teamRow = (await win.textContent('tr:has(strong:text-is("Speed Racing Team"))')).replace(/\s+/g, ' ')
   check('equipo: lista sus pilotos', teamRow.includes('Pilotos: Marc Pérez') && teamRow.includes('1 piloto'), teamRow)
   await win.click('.segmented button:has-text("Pilotos")')
