@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite'
 
 export type DB = DatabaseSync
 
-const MIGRATIONS: string[] = [
+export const MIGRATIONS: string[] = [
   `
   CREATE TABLE clients (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,11 +48,68 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX idx_photos_session ON photos(session_id);
   CREATE INDEX idx_sessions_client ON sessions(client_id);
+  `,
+  `
+  ALTER TABLE clients ADD COLUMN tax_id TEXT;
+  ALTER TABLE clients ADD COLUMN address TEXT;
+  ALTER TABLE photos ADD COLUMN client_pick INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE photos ADD COLUMN is_raw INTEGER NOT NULL DEFAULT 0;
+  CREATE TABLE photo_tags (
+    photo_id INTEGER NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
+    tag TEXT NOT NULL COLLATE NOCASE,
+    PRIMARY KEY (photo_id, tag)
+  );
+  CREATE INDEX idx_photo_tags_tag ON photo_tags(tag);
+  CREATE TABLE session_tags (
+    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    tag TEXT NOT NULL COLLATE NOCASE,
+    PRIMARY KEY (session_id, tag)
+  );
+  CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);
+  CREATE TABLE invoices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL CHECK (kind IN ('presupuesto', 'factura')),
+    number TEXT NOT NULL UNIQUE,
+    client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL,
+    session_id INTEGER REFERENCES sessions(id) ON DELETE SET NULL,
+    issue_date TEXT NOT NULL,
+    due_date TEXT,
+    status TEXT NOT NULL DEFAULT 'borrador',
+    tax_rate REAL NOT NULL DEFAULT 21,
+    irpf_rate REAL NOT NULL DEFAULT 0,
+    notes TEXT,
+    source_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE TABLE invoice_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL,
+    description TEXT NOT NULL,
+    quantity REAL NOT NULL DEFAULT 1,
+    unit_price REAL NOT NULL DEFAULT 0
+  );
   `
 ]
 
-/** Ejecuta fn dentro de una transacción (rollback si lanza un error). */
+const depth = new WeakMap<DB, number>()
+
+/** Ejecuta fn dentro de una transacción (rollback si lanza un error). Reentrante. */
 export function transaction<T>(db: DB, fn: () => T): T {
+  const d = depth.get(db) ?? 0
+  if (d > 0) {
+    depth.set(db, d + 1)
+    try { return fn() } finally { depth.set(db, d) }
+  }
+  depth.set(db, 1)
+  try {
+    return runTransaction(db, fn)
+  } finally {
+    depth.set(db, 0)
+  }
+}
+
+function runTransaction<T>(db: DB, fn: () => T): T {
   db.exec('BEGIN')
   try {
     const result = fn()

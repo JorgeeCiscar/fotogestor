@@ -9,7 +9,9 @@ export default function ClientForm({ client, onClose, onSaved }: { client?: Clie
     name: client?.name ?? '',
     email: client?.email ?? '',
     phone: client?.phone ?? '',
-    notes: client?.notes ?? ''
+    notes: client?.notes ?? '',
+    tax_id: client?.tax_id ?? '',
+    address: client?.address ?? ''
   })
   const [error, setError] = useState('')
   const set = (k: keyof ClientInput) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value })
@@ -30,6 +32,10 @@ export default function ClientForm({ client, onClose, onSaved }: { client?: Clie
         <div className="row">
           <label>Email<input type="email" value={form.email ?? ''} onChange={set('email')} /></label>
           <label>Teléfono<input value={form.phone ?? ''} onChange={set('phone')} /></label>
+        </div>
+        <div className="row">
+          <label>NIF / CIF<input value={form.tax_id ?? ''} onChange={set('tax_id')} /></label>
+          <label>Dirección (para facturas)<input value={form.address ?? ''} onChange={set('address')} /></label>
         </div>
         <label>Notas<textarea rows={3} value={form.notes ?? ''} onChange={set('notes')} /></label>
         {error && <p className="error">{error}</p>}

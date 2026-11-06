@@ -4,9 +4,14 @@ import type { DB } from './db'
 import sharp from 'sharp'
 import exifr from 'exifr'
 import type { ImportProgress, ImportResult } from '../shared/types'
+import { isRaw, RAW_EXT, readRawPreview } from './raw'
 import { LocalStorage, sessionKey } from './storage'
 
-export const SUPPORTED_EXT = ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp']
+export const IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp']
+export const SUPPORTED_EXT = [...IMAGE_EXT, ...RAW_EXT]
+
+/** Ángulo de rotación para cada valor de orientación EXIF (solo rotaciones). */
+const ORIENTATION_ANGLE: Record<number, number> = { 3: 180, 6: 90, 8: 270 }
 
 /** Expande carpetas (recursivamente) y filtra extensiones soportadas. */
 export async function collectFiles(paths: string[]): Promise<string[]> {
@@ -23,9 +28,20 @@ export async function collectFiles(paths: string[]): Promise<string[]> {
   return out.sort()
 }
 
+/** "NIKON CORPORATION" + "NIKON D3S" → "NIKON D3S"; "FUJIFILM" + "X-T5" → "FUJIFILM X-T5". */
+function cameraName(make?: string, model?: string): string | null {
+  const mk = make?.trim() ?? ''
+  const md = model?.trim() ?? ''
+  const brand = mk.split(/\s+/)[0]
+  if (md && brand && md.toLowerCase().startsWith(brand.toLowerCase())) return md
+  return [mk, md].filter(Boolean).join(' ') || null
+}
+
 function formatShutter(t?: number): string | null {
   if (!t) return null
-  return t >= 1 ? `${t}s` : `1/${Math.round(1 / t)}s`
+  // Las cámaras muestran 0,6 s / 0,8 s en lugar de fracciones a partir de ~1/3 s.
+  if (t >= 0.3) return `${String(Math.round(t * 10) / 10).replace('.', ',')}s`
+  return `1/${Math.round(1 / t)}s`
 }
 
 export async function importPhotos(
@@ -40,9 +56,9 @@ export async function importPhotos(
   const nameTaken = db.prepare('SELECT 1 FROM photos WHERE session_id = ? AND original_key = ?')
   const insert = db.prepare(`
     INSERT INTO photos (session_id, file_name, original_key, thumb_key, preview_key, file_size,
-      width, height, taken_at, camera, lens, iso, aperture, shutter, focal_length)
+      width, height, taken_at, camera, lens, iso, aperture, shutter, focal_length, is_raw)
     VALUES (@session_id, @file_name, @original_key, @thumb_key, @preview_key, @file_size,
-      @width, @height, @taken_at, @camera, @lens, @iso, @aperture, @shutter, @focal_length)`)
+      @width, @height, @taken_at, @camera, @lens, @iso, @aperture, @shutter, @focal_length, @is_raw)`)
 
   for (let i = 0; i < files.length; i++) {
     const src = files[i]
@@ -61,20 +77,31 @@ export async function importPhotos(
         storedName = `${name}_${n}${ext}`
       }
       const originalKey = sessionKey(sessionId, 'originals', storedName)
-      const thumbKey = sessionKey(sessionId, 'thumbs', `${parse(storedName).name}.webp`)
-      const previewKey = sessionKey(sessionId, 'previews', `${parse(storedName).name}.webp`)
+      // Incluye la extensión: IMG_1.CR3 e IMG_1.JPG (RAW+JPEG) no deben compartir miniatura.
+      const thumbKey = sessionKey(sessionId, 'thumbs', `${storedName}.webp`)
+      const previewKey = sessionKey(sessionId, 'previews', `${storedName}.webp`)
 
       await storage.put(src, originalKey)
       const abs = storage.resolve(originalKey)
       for (const k of [thumbKey, previewKey]) await mkdir(dirname(storage.resolve(k)), { recursive: true })
 
-      const meta = await sharp(abs).metadata()
-      const rotated = (meta.orientation ?? 1) >= 5
-      await sharp(abs).rotate().resize(480, 480, { fit: 'inside' }).webp({ quality: 78 }).toFile(storage.resolve(thumbKey))
-      await sharp(abs).rotate().resize(2000, 2000, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 85 }).toFile(storage.resolve(previewKey))
+      const raw = isRaw(ext)
+      const exif = await exifr
+        .parse(abs, { translateValues: false, pick: ['DateTimeOriginal', 'Make', 'Model', 'LensModel', 'ISO', 'FNumber', 'ExposureTime', 'FocalLength', 'Orientation'] })
+        .catch(() => null)
 
-      const exif = await exifr.parse(abs, { pick: ['DateTimeOriginal', 'Make', 'Model', 'LensModel', 'ISO', 'FNumber', 'ExposureTime', 'FocalLength'] }).catch(() => null)
-      const camera = [exif?.Make, exif?.Model].filter(Boolean).join(' ').trim() || null
+      // Para RAW se trabaja con la vista previa JPEG incrustada; el original no se modifica.
+      const source: string | Buffer = raw ? await readRawPreview(abs) : abs
+      const meta = await sharp(source).metadata()
+      // Las vistas previas de RAW no suelen llevar orientación propia: se usa la del RAW.
+      const orientation = meta.orientation ?? (raw ? Number(exif?.Orientation) || 1 : 1)
+      const angle = meta.orientation ? undefined : ORIENTATION_ANGLE[orientation]
+      const rotated = orientation >= 5
+      const pipeline = () => (angle === undefined ? sharp(source).rotate() : sharp(source).rotate(angle))
+      await pipeline().resize(480, 480, { fit: 'inside' }).webp({ quality: 78 }).toFile(storage.resolve(thumbKey))
+      await pipeline().resize(2000, 2000, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 85 }).toFile(storage.resolve(previewKey))
+
+      const camera = cameraName(exif?.Make, exif?.Model)
 
       insert.run({
         session_id: sessionId,
@@ -91,7 +118,8 @@ export async function importPhotos(
         iso: exif?.ISO ?? null,
         aperture: exif?.FNumber ?? null,
         shutter: formatShutter(exif?.ExposureTime),
-        focal_length: exif?.FocalLength ?? null
+        focal_length: exif?.FocalLength ?? null,
+        is_raw: raw ? 1 : 0
       })
       result.imported++
     } catch (err) {

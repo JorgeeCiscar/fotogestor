@@ -26,3 +26,18 @@ export function errorMessage(err: unknown): string {
   // Electron envuelve los errores de IPC: "Error invoking remote method 'x': Error: ..."
   return msg.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 }
+
+export const INVOICE_STATUS_LABEL: Record<string, string> = {
+  borrador: 'Borrador', enviada: 'Enviada', aceptada: 'Aceptada', rechazada: 'Rechazada', pagada: 'Pagada'
+}
+
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
+export function invoiceTotals(items: { quantity: number; unit_price: number }[], taxRate: number, irpfRate: number) {
+  const subtotal = round2(items.reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.unit_price) || 0), 0))
+  const tax = round2((subtotal * (Number(taxRate) || 0)) / 100)
+  const irpf = round2((subtotal * (Number(irpfRate) || 0)) / 100)
+  return { subtotal, tax, irpf, total: round2(subtotal + tax - irpf) }
+}
+
+export const today = () => new Date().toLocaleDateString('sv-SE')
+export const displayNumber = (n: string) => (n.startsWith('BORRADOR-') ? 'Borrador' : n)

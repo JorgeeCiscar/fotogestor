@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { DashboardStats } from '../../../shared/types'
 import type { View } from '../App'
-import { api } from '../util'
+import { api, formatMoney } from '../util'
 import SessionCard from './SessionCard'
 import SessionForm from './SessionForm'
 
@@ -22,6 +22,12 @@ export default function Dashboard({ nav }: { nav: (v: View) => void }) {
         <div className="stat"><span>{stats.pendingDelivery}</span>Pendientes de entrega</div>
         <div className="stat"><span>{stats.clients}</span>Clientes</div>
         <div className="stat"><span>{stats.photos.toLocaleString('es-ES')}</span>Fotografías</div>
+      </div>
+      <div className="stats">
+        <button className="stat" onClick={() => nav({ name: 'invoices' })}><span>{formatMoney(stats.invoicedThisYear)}</span>Facturado este año</button>
+        <button className="stat" onClick={() => nav({ name: 'invoices' })}>
+          <span>{formatMoney(stats.pendingAmount)}</span>Pendiente de cobro ({stats.pendingInvoices} {stats.pendingInvoices === 1 ? 'factura' : 'facturas'})
+        </button>
       </div>
       <h2>Próximas sesiones</h2>
       {stats.upcoming.length ? (

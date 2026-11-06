@@ -1,37 +1,63 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Dashboard from './components/Dashboard'
 import ClientsView from './components/ClientsView'
 import SessionsView from './components/SessionsView'
 import SessionDetail from './components/SessionDetail'
+import SearchView from './components/SearchView'
+import InvoicesView from './components/InvoicesView'
+import SettingsView from './components/SettingsView'
 
 export type View =
   | { name: 'dashboard' }
   | { name: 'clients' }
   | { name: 'sessions'; clientId?: number }
-  | { name: 'session'; id: number }
+  | { name: 'session'; id: number; photoId?: number }
+  | { name: 'search'; q?: string }
+  | { name: 'invoices'; openId?: number; newForSession?: number }
+  | { name: 'settings' }
+
+const NAV: [View['name'], string][] = [
+  ['dashboard', 'Panel'],
+  ['sessions', 'Sesiones'],
+  ['clients', 'Clientes'],
+  ['invoices', 'Facturación'],
+  ['search', 'Buscar'],
+  ['settings', 'Ajustes']
+]
 
 export default function App() {
   const [view, setView] = useState<View>({ name: 'dashboard' })
   const nav = (v: View) => setView(v)
   const active = view.name === 'session' ? 'sessions' : view.name
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setView({ name: 'search' }) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   return (
     <div className="app">
       <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-mark">◉</span> FotoGestor
-        </div>
+        <div className="brand"><span className="brand-mark">◉</span> FotoGestor</div>
         <nav>
-          <button className={active === 'dashboard' ? 'active' : ''} onClick={() => nav({ name: 'dashboard' })}>Panel</button>
-          <button className={active === 'sessions' ? 'active' : ''} onClick={() => nav({ name: 'sessions' })}>Sesiones</button>
-          <button className={active === 'clients' ? 'active' : ''} onClick={() => nav({ name: 'clients' })}>Clientes</button>
+          {NAV.map(([name, label]) => (
+            <button key={name} className={active === name ? 'active' : ''} onClick={() => nav({ name } as View)}>
+              {label}{name === 'search' && <kbd>Ctrl K</kbd>}
+            </button>
+          ))}
         </nav>
       </aside>
       <main className="content">
         {view.name === 'dashboard' && <Dashboard nav={nav} />}
         {view.name === 'clients' && <ClientsView nav={nav} />}
         {view.name === 'sessions' && <SessionsView nav={nav} clientId={view.clientId} />}
-        {view.name === 'session' && <SessionDetail id={view.id} nav={nav} />}
+        {view.name === 'session' && <SessionDetail key={view.id} id={view.id} photoId={view.photoId} nav={nav} />}
+        {view.name === 'search' && <SearchView nav={nav} initial={view.q} />}
+        {view.name === 'invoices' && <InvoicesView nav={nav} openId={view.openId} newForSession={view.newForSession} />}
+        {view.name === 'settings' && <SettingsView />}
       </main>
     </div>
   )

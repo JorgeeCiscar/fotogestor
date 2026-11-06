@@ -3,6 +3,7 @@ import type { Client, Session, SessionInput } from '../../../shared/types'
 import { SESSION_STATUSES } from '../../../shared/types'
 import { api, errorMessage, SESSION_TYPES, STATUS_LABEL } from '../util'
 import Modal from './Modal'
+import TagInput from './TagInput'
 
 export default function SessionForm({ session, defaultClientId, onClose, onSaved }: {
   session?: Session
@@ -20,7 +21,8 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
     location: session?.location ?? '',
     status: session?.status ?? 'planificada',
     price: session?.price ?? null,
-    notes: session?.notes ?? ''
+    notes: session?.notes ?? '',
+    tags: session?.tags ?? []
   })
   const [error, setError] = useState('')
   useEffect(() => { api.clients.list().then(setClients) }, [])
@@ -68,6 +70,10 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
               onChange={(e) => setForm({ ...form, price: e.target.value === '' ? null : Number(e.target.value) })} />
           </label>
         </div>
+        <label>Etiquetas
+          <TagInput value={form.tags} onAdd={(t) => setForm({ ...form, tags: [...form.tags, t] })}
+            onRemove={(t) => setForm({ ...form, tags: form.tags.filter((x) => x !== t) })} />
+        </label>
         <label>Notas<textarea rows={3} value={form.notes ?? ''} onChange={set('notes')} /></label>
         {error && <p className="error">{error}</p>}
         <footer>

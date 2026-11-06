@@ -1,0 +1,41 @@
+appId: com.fotogestor.app
+productName: FotoGestor
+copyright: FotoGestor
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - package.json
+  # Solo se incluyen los binarios de sharp de la plataforma de destino.
+  - "!node_modules/@img/sharp-linux*/**"
+  - "!node_modules/@img/sharp-libvips-linux*/**"
+  - "!node_modules/@img/sharp-darwin*/**"
+  - "!node_modules/@img/sharp-libvips-darwin*/**"
+asar: true
+asarUnpack:
+  - node_modules/sharp/**
+  - node_modules/@img/**
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: FotoGestor
+  artifactName: FotoGestor-Setup-${version}.exe
+  installerLanguages: [es_ES]
+  language: "3082"
+  uninstallDisplayName: FotoGestor
+mac:
+  icon: build/icon.png
+  category: public.app-category.photography
+linux:
+  icon: build/icon.png
+  target: [AppImage]
+publish: null

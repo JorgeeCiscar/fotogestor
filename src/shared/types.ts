@@ -9,6 +9,8 @@ export interface Client {
   email: string | null
   phone: string | null
   notes: string | null
+  tax_id: string | null
+  address: string | null
   created_at: string
   session_count?: number
 }
@@ -28,11 +30,13 @@ export interface Session {
   created_at: string
   photo_count?: number
   pick_count?: number
+  client_pick_count?: number
   cover_key?: string | null
+  tags: string[]
 }
 export type SessionInput = Omit<
   Session,
-  'id' | 'created_at' | 'client_name' | 'photo_count' | 'pick_count' | 'cover_key'
+  'id' | 'created_at' | 'client_name' | 'photo_count' | 'pick_count' | 'client_pick_count' | 'cover_key'
 > & { id?: number }
 
 export interface Photo {
@@ -54,9 +58,13 @@ export interface Photo {
   focal_length: number | null
   rating: number
   flag: Flag
+  /** 1 si el cliente la marcó como favorita en su galería. */
+  client_pick: number
+  is_raw: number
+  tags: string[]
   created_at: string
 }
-export type PhotoPatch = Partial<Pick<Photo, 'rating' | 'flag'>>
+export type PhotoPatch = Partial<Pick<Photo, 'rating' | 'flag' | 'client_pick'>>
 
 export interface ImportProgress {
   sessionId: number
@@ -76,6 +84,76 @@ export interface DashboardStats {
   photos: number
   pendingDelivery: number
   upcoming: Session[]
+  pendingInvoices: number
+  pendingAmount: number
+  invoicedThisYear: number
+}
+
+export interface SearchResults {
+  clients: Client[]
+  sessions: Session[]
+  photos: (Photo & { session_title: string })[]
+}
+
+export interface Settings {
+  business_name: string
+  business_tax_id: string
+  business_address: string
+  business_email: string
+  business_phone: string
+  business_iban: string
+  logo_data_url: string
+  default_tax_rate: number
+  default_irpf_rate: number
+  invoice_footer: string
+  watermark_text: string
+}
+
+export type InvoiceKind = 'presupuesto' | 'factura'
+export type InvoiceStatus = 'borrador' | 'enviada' | 'aceptada' | 'rechazada' | 'pagada'
+export const INVOICE_STATUSES: Record<InvoiceKind, InvoiceStatus[]> = {
+  presupuesto: ['borrador', 'enviada', 'aceptada', 'rechazada'],
+  factura: ['borrador', 'enviada', 'pagada']
+}
+
+export interface InvoiceItem {
+  id?: number
+  description: string
+  quantity: number
+  unit_price: number
+}
+
+export interface Invoice {
+  id: number
+  kind: InvoiceKind
+  number: string
+  client_id: number | null
+  client_name?: string | null
+  session_id: number | null
+  session_title?: string | null
+  issue_date: string
+  due_date: string | null
+  status: InvoiceStatus
+  tax_rate: number
+  irpf_rate: number
+  notes: string | null
+  source_id: number | null
+  created_at: string
+  items: InvoiceItem[]
+  /** Calculados. */
+  subtotal: number
+  tax: number
+  irpf: number
+  total: number
+}
+export type InvoiceInput = Pick<
+  Invoice,
+  'kind' | 'client_id' | 'session_id' | 'issue_date' | 'due_date' | 'status' | 'tax_rate' | 'irpf_rate' | 'notes' | 'items'
+> & { id?: number }
+
+export interface GalleryExportOptions {
+  scope: 'picks' | 'all'
+  watermark: boolean
 }
 
 export interface Api {
@@ -97,7 +175,29 @@ export interface Api {
     importFiles(sessionId: number): Promise<ImportResult | null>
     exportPicks(sessionId: number): Promise<{ exported: number; folder: string } | null>
     reveal(id: number): Promise<void>
+    addTag(ids: number[], tag: string): Promise<void>
+    removeTag(ids: number[], tag: string): Promise<void>
     onImportProgress(cb: (p: ImportProgress) => void): () => void
+  }
+  tags(): Promise<string[]>
+  search(q: string): Promise<SearchResults>
+  gallery: {
+    export(sessionId: number, opts: GalleryExportOptions): Promise<{ file: string; count: number } | null>
+    importSelection(sessionId: number, text: string): Promise<{ matched: number; unknown: number }>
+    onProgress(cb: (p: { done: number; total: number }) => void): () => void
+  }
+  settings: {
+    get(): Promise<Settings>
+    save(s: Partial<Settings>): Promise<Settings>
+    chooseLogo(): Promise<string | null>
+  }
+  invoices: {
+    list(filter?: { kind?: InvoiceKind; clientId?: number; sessionId?: number }): Promise<Invoice[]>
+    get(id: number): Promise<Invoice | null>
+    save(i: InvoiceInput): Promise<Invoice>
+    remove(id: number): Promise<void>
+    convertToInvoice(id: number): Promise<Invoice>
+    exportPdf(id: number): Promise<string | null>
   }
   stats(): Promise<DashboardStats>
   mediaUrl(key: string): string
