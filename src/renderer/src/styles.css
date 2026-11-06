@@ -189,3 +189,13 @@ input:disabled, select:disabled, textarea:disabled { opacity: .7; }
 .inv-aceptada { background: #2f855a; }
 .inv-pagada { background: #2f855a; }
 .inv-rechazada { background: #9b2c2c; }
+
+/* ---------- Actualizaciones ---------- */
+.sidebar { display: flex; flex-direction: column; }
+.sidebar-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+.app-version { padding: 0 8px; }
+.update-banner { padding: 10px; border-radius: 8px; background: var(--panel-2); display: flex; flex-direction: column; gap: 6px; }
+.update-banner.ready { border: 1px solid var(--accent); }
+.update-banner button { width: 100%; }
+.update-row { display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }

@@ -41,6 +41,13 @@ const api: Api = {
     exportPdf: invoke('invoices:exportPdf')
   },
   stats: invoke('stats'),
+  app: {
+    version: invoke('app:version'),
+    updateStatus: invoke('update:status'),
+    checkForUpdates: invoke('update:check'),
+    installUpdate: invoke('update:install'),
+    onUpdateStatus: (cb) => subscribe('update:status', cb)
+  },
   mediaUrl: (key) => `foto://media/${encodeURIComponent(key)}`
 } as Api
 

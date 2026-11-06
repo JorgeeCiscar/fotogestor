@@ -6,6 +6,7 @@ import SessionDetail from './components/SessionDetail'
 import SearchView from './components/SearchView'
 import InvoicesView from './components/InvoicesView'
 import SettingsView from './components/SettingsView'
+import UpdateBanner, { AppVersion } from './components/UpdateBanner'
 
 export type View =
   | { name: 'dashboard' }
@@ -49,6 +50,10 @@ export default function App() {
             </button>
           ))}
         </nav>
+        <div className="sidebar-bottom">
+          <UpdateBanner />
+          <AppVersion />
+        </div>
       </aside>
       <main className="content">
         {view.name === 'dashboard' && <Dashboard nav={nav} />}

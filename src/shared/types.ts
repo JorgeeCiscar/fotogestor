@@ -156,6 +156,13 @@ export interface GalleryExportOptions {
   watermark: boolean
 }
 
+export interface UpdateStatus {
+  state: 'idle' | 'disabled' | 'checking' | 'none' | 'downloading' | 'downloaded' | 'error'
+  version?: string
+  percent?: number
+  message?: string
+}
+
 export interface Api {
   clients: {
     list(): Promise<Client[]>
@@ -200,5 +207,12 @@ export interface Api {
     exportPdf(id: number): Promise<string | null>
   }
   stats(): Promise<DashboardStats>
+  app: {
+    version(): Promise<string>
+    updateStatus(): Promise<UpdateStatus>
+    checkForUpdates(): Promise<UpdateStatus>
+    installUpdate(): Promise<void>
+    onUpdateStatus(cb: (s: UpdateStatus) => void): () => void
+  }
   mediaUrl(key: string): string
 }

@@ -1,11 +1,14 @@
 import { FormEvent, useEffect, useState } from 'react'
 import type { Settings } from '../../../shared/types'
 import { api, errorMessage } from '../util'
+import { describeUpdate, useUpdateStatus } from './UpdateBanner'
 
 export default function SettingsView() {
   const [form, setForm] = useState<Settings | null>(null)
   const [msg, setMsg] = useState('')
-  useEffect(() => { api.settings.get().then(setForm) }, [])
+  const [version, setVersion] = useState('')
+  const update = useUpdateStatus()
+  useEffect(() => { api.settings.get().then(setForm); api.app.version().then(setVersion) }, [])
   if (!form) return null
   const set = (k: keyof Settings) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value })
 
@@ -54,6 +57,20 @@ export default function SettingsView() {
         <h2>Galerías para clientes</h2>
         <label>Texto de la marca de agua<input value={form.watermark_text} onChange={set('watermark_text')}
           placeholder={form.business_name || 'Si se deja vacío se usa el nombre comercial'} /></label>
+
+        <h2>Actualizaciones</h2>
+        <div className="update-row">
+          <div>
+            <div>FotoGestor <strong>v{version}</strong></div>
+            <div className="muted small">{describeUpdate(update)}</div>
+          </div>
+          {update.state === 'downloaded' ? (
+            <button type="button" className="primary" onClick={() => api.app.installUpdate()}>Reiniciar y actualizar</button>
+          ) : (
+            <button type="button" onClick={() => api.app.checkForUpdates()}
+              disabled={['checking', 'downloading', 'disabled'].includes(update.state)}>Buscar actualizaciones</button>
+          )}
+        </div>
 
         <footer>
           {msg && <span className="muted">{msg}</span>}

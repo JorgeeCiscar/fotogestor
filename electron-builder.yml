@@ -38,4 +38,8 @@ mac:
 linux:
   icon: build/icon.png
   target: [AppImage]
-publish: null
+# El repositorio (owner/repo) se detecta del remoto git. Las versiones deben ser
+# públicas (no borradores) para que el actualizador las encuentre.
+publish:
+  provider: github
+  releaseType: release

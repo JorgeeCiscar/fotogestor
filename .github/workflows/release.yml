@@ -1,0 +1,47 @@
+# Publica una versión nueva de FotoGestor al subir una etiqueta vX.Y.Z.
+# 1) Pasa la comprobación de tipos y la prueba E2E en Linux.
+# 2) Compila el instalador en Windows y lo publica en GitHub Releases,
+#    de donde lo descarga el actualizador automático de la app.
+name: Publicar versión
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Comprobar que la etiqueta coincide con package.json
+        run: |
+          v=$(node -p "require('./package.json').version")
+          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "La etiqueta $GITHUB_REF_NAME no coincide con la versión v$v de package.json"; exit 1; }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npx playwright install --with-deps chromium
+      - name: Prueba de extremo a extremo
+        run: xvfb-run -a npm run test:e2e
+
+  release:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx electron-vite build
+      - name: Compilar y publicar el instalador
+        run: npx electron-builder --win --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

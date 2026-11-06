@@ -5,7 +5,7 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
 
 **Stack:** Electron · React · TypeScript · Vite (electron-vite) · SQLite (`node:sqlite`, integrado en Electron) · sharp · exifr
 
-## Funcionalidades (v0.2)
+## Funcionalidades (v0.3)
 
 - **Clientes**: datos de contacto, NIF y dirección (para facturas), búsqueda y número de sesiones.
 - **Sesiones**: cliente, tipo, fecha, lugar, precio, notas, etiquetas y estado
@@ -23,6 +23,7 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
   estados, conversión de presupuesto a factura y PDF. Las facturas reciben número correlativo
   (`F-2026-001`) al emitirse y, una vez emitidas, no se pueden editar ni eliminar.
 - **Panel** con próximas sesiones, facturado en el año y pendiente de cobro.
+- **Actualizaciones automáticas** desde GitHub Releases.
 
 ## Desarrollo
 
@@ -38,6 +39,21 @@ npm run dist:win   # genera dist/FotoGestor-Setup-<versión>.exe
   `E2E_RAW=/ruta/foto.NEF` añade un RAW real a la prueba.
 - `dist:win` desde Linux necesita Wine (`apt install wine wine32:i386 wine64`). En Windows funciona directamente.
 - El instalador no está firmado digitalmente: Windows SmartScreen mostrará «Editor desconocido».
+
+## Actualizaciones automáticas
+
+La app instalada busca versiones nuevas en GitHub Releases al arrancar y cada 4 horas. Las descarga
+en segundo plano y las instala al cerrarse (o con «Reiniciar y actualizar»). En Ajustes hay un botón
+«Buscar actualizaciones». El repositorio debe ser **público** para que la app pueda leer las versiones.
+
+Para publicar una versión nueva:
+
+```bash
+npm run release    # sube la versión (0.3.0 → 0.3.1), crea la etiqueta v0.3.1 y la sube
+```
+
+Al llegar la etiqueta a GitHub, `.github/workflows/release.yml` pasa las pruebas, compila el instalador
+en Windows y lo publica en Releases.
 
 ## Estructura
 

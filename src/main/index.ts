@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url'
 import { openDatabase } from './db'
 import { registerIpc } from './ipc'
 import { LocalStorage } from './storage'
+import { setupUpdater } from './updater'
 
 // Esquema propio para servir miniaturas/previsualizaciones de la biblioteca de forma segura.
 protocol.registerSchemesAsPrivileged([
@@ -53,6 +54,7 @@ app.whenReady().then(() => {
   })
 
   registerIpc(db, storage)
+  setupUpdater()
   createWindow()
   app.on('activate', () => BrowserWindow.getAllWindows().length === 0 && createWindow())
   app.on('will-quit', () => db.close())
