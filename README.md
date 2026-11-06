@@ -49,11 +49,11 @@ en segundo plano y las instala al cerrarse (o con «Reiniciar y actualizar»). E
 Para publicar una versión nueva:
 
 ```bash
-npm run release    # sube la versión (0.3.0 → 0.3.1), crea la etiqueta v0.3.1 y la sube
+npm run release    # sube la versión (0.3.0 → 0.3.1) en package.json, hace commit y push a main
 ```
 
-Al llegar la etiqueta a GitHub, `.github/workflows/release.yml` pasa las pruebas, compila el instalador
-en Windows y lo publica en Releases.
+En cada push a `main`, `.github/workflows/release.yml` pasa las pruebas. Si la versión de `package.json`
+aún no está publicada, compila el instalador en Windows y lo publica en Releases con la etiqueta `vX.Y.Z`.
 
 ## Estructura
 

@@ -1,17 +1,41 @@
-# Publica una versión nueva de FotoGestor al subir una etiqueta vX.Y.Z.
-# 1) Pasa la comprobación de tipos y la prueba E2E en Linux.
-# 2) Compila el instalador en Windows y lo publica en GitHub Releases,
-#    de donde lo descarga el actualizador automático de la app.
-name: Publicar versión
+# Pruebas en cada subida a main y publicación automática de versiones nuevas.
+# Si la versión de package.json todavía no tiene su etiqueta vX.Y.Z en GitHub:
+#   1) pasa la comprobación de tipos y la prueba E2E en Linux,
+#   2) compila el instalador en Windows y lo publica en GitHub Releases (creando la etiqueta),
+#      de donde lo descarga el actualizador automático de la app.
+name: Pruebas y publicación
 
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      publish: ${{ steps.v.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        name: ¿Hay una versión nueva que publicar?
+        run: |
+          v=$(node -p "require('./package.json').version")
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$v" > /dev/null; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"; echo "v$v ya está publicada"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"; echo "Se publicará v$v"
+          fi
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -20,10 +44,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Comprobar que la etiqueta coincide con package.json
-        run: |
-          v=$(node -p "require('./package.json').version")
-          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "La etiqueta $GITHUB_REF_NAME no coincide con la versión v$v de package.json"; exit 1; }
       - run: npm ci
       - run: npm run typecheck
       - run: npx playwright install --with-deps chromium
@@ -31,7 +51,8 @@ jobs:
         run: xvfb-run -a npm run test:e2e
 
   release:
-    needs: test
+    needs: [check, test]
+    if: needs.check.outputs.publish == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
