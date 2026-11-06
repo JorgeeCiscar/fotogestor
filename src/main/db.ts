@@ -89,6 +89,26 @@ export const MIGRATIONS: string[] = [
     quantity REAL NOT NULL DEFAULT 1,
     unit_price REAL NOT NULL DEFAULT 0
   );
+  `,
+  // v3: tipos de cliente (piloto / equipo / particular) y sus datos propios.
+  `
+  ALTER TABLE clients ADD COLUMN kind TEXT CHECK (kind IN ('piloto', 'equipo', 'particular'));
+  ALTER TABLE clients ADD COLUMN instagram TEXT;
+  ALTER TABLE clients ADD COLUMN racing_number TEXT;
+  ALTER TABLE clients ADD COLUMN category TEXT;
+  ALTER TABLE clients ADD COLUMN vehicle TEXT;
+  ALTER TABLE clients ADD COLUMN team_id INTEGER REFERENCES clients(id) ON DELETE SET NULL;
+  ALTER TABLE clients ADD COLUMN nationality TEXT;
+  ALTER TABLE clients ADD COLUMN birth_date TEXT;
+  ALTER TABLE clients ADD COLUMN license_number TEXT;
+  ALTER TABLE clients ADD COLUMN guardian_name TEXT;
+  ALTER TABLE clients ADD COLUMN guardian_phone TEXT;
+  ALTER TABLE clients ADD COLUMN contact_name TEXT;
+  ALTER TABLE clients ADD COLUMN contact_role TEXT;
+  ALTER TABLE clients ADD COLUMN brand TEXT;
+  ALTER TABLE clients ADD COLUMN website TEXT;
+  CREATE INDEX idx_clients_team ON clients(team_id);
+  CREATE INDEX idx_clients_kind ON clients(kind);
   `
 ]
 

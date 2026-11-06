@@ -41,3 +41,15 @@ export function invoiceTotals(items: { quantity: number; unit_price: number }[],
 
 export const today = () => new Date().toLocaleDateString('sv-SE')
 export const displayNumber = (n: string) => (n.startsWith('BORRADOR-') ? 'Borrador' : n)
+
+export const CLIENT_KIND_LABEL: Record<string, string> = { piloto: 'Piloto', equipo: 'Equipo', particular: 'Particular' }
+export const CLIENT_KIND_ICON: Record<string, string> = { piloto: '🏁', equipo: '🏢', particular: '👤' }
+
+/** Edad en años a partir de una fecha AAAA-MM-DD (null si no hay fecha). */
+export function ageFrom(birth: string | null | undefined, now = new Date()): number | null {
+  if (!birth || !/^\d{4}-\d{2}-\d{2}$/.test(birth)) return null
+  const [y, m, d] = birth.split('-').map(Number)
+  let age = now.getFullYear() - y
+  if (now.getMonth() + 1 < m || (now.getMonth() + 1 === m && now.getDate() < d)) age--
+  return age
+}

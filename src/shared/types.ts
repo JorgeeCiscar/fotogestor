@@ -3,18 +3,49 @@ export const SESSION_STATUSES: SessionStatus[] = ['planificada', 'realizada', 'e
 
 export type Flag = 'pick' | 'reject' | null
 
+export type ClientKind = 'piloto' | 'equipo' | 'particular'
+export const CLIENT_KINDS: ClientKind[] = ['piloto', 'equipo', 'particular']
+
+/** Campos propios de cada tipo de cliente (el resto se guardan vacíos). */
+export const PILOT_FIELDS = ['racing_number', 'category', 'vehicle', 'team_id', 'nationality', 'birth_date', 'license_number', 'guardian_name', 'guardian_phone'] as const
+export const TEAM_FIELDS = ['contact_name', 'contact_role', 'category', 'brand', 'website'] as const
+
 export interface Client {
   id: number
+  /** null en clientes creados antes de existir los tipos. */
+  kind: ClientKind | null
   name: string
   email: string | null
   phone: string | null
+  instagram: string | null
   notes: string | null
   tax_id: string | null
   address: string | null
+  // Piloto
+  racing_number: string | null
+  category: string | null
+  vehicle: string | null
+  team_id: number | null
+  nationality: string | null
+  birth_date: string | null
+  license_number: string | null
+  guardian_name: string | null
+  guardian_phone: string | null
+  // Equipo
+  contact_name: string | null
+  contact_role: string | null
+  brand: string | null
+  website: string | null
   created_at: string
   session_count?: number
+  team_name?: string | null
+  pilot_count?: number
+  pilot_names?: string | null
 }
-export type ClientInput = Omit<Client, 'id' | 'created_at' | 'session_count'> & { id?: number }
+export type ClientInput = Omit<Client, 'id' | 'created_at' | 'session_count' | 'team_name' | 'pilot_count' | 'pilot_names' | 'kind'> & {
+  id?: number
+  kind: ClientKind
+}
 
 export interface Session {
   id: number

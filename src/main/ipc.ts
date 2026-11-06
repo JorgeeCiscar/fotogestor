@@ -3,7 +3,7 @@ import { copyFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { SQLInputValue } from 'node:sqlite'
 import type { ClientInput, Photo, PhotoPatch, SessionInput, SessionStatus } from '../shared/types'
-import { SESSION_STATUSES } from '../shared/types'
+import { CLIENT_KINDS, PILOT_FIELDS, SESSION_STATUSES, TEAM_FIELDS } from '../shared/types'
 import { transaction, type DB } from './db'
 import { registerGalleryIpc } from './gallery'
 import { collectFiles, importPhotos, SUPPORTED_EXT } from './importer'
@@ -36,7 +36,52 @@ export function withTags<T>(row: Row | undefined): T {
   return { ...rest, tags: tags_raw ? String(tags_raw).split(SEP).sort((a, b) => a.localeCompare(b)) : [] } as T
 }
 
-const nullIfEmpty = (v: string | null | undefined): string | null => (v === '' || v === undefined ? null : v)
+export const nullIfEmpty = (v: string | null | undefined): string | null => {
+  if (v === undefined || v === null) return null
+  const t = String(v).trim()
+  return t === '' ? null : t
+}
+
+export const CLIENT_SELECT = `
+  SELECT c.*,
+    (SELECT COUNT(*) FROM sessions s WHERE s.client_id = c.id) AS session_count,
+    (SELECT t.name FROM clients t WHERE t.id = c.team_id) AS team_name,
+    (SELECT COUNT(*) FROM clients p WHERE p.team_id = c.id) AS pilot_count,
+    (SELECT group_concat(name, ', ') FROM (SELECT p.name FROM clients p WHERE p.team_id = c.id ORDER BY p.name COLLATE NOCASE)) AS pilot_names
+  FROM clients c`
+
+const COMMON_FIELDS = ['name', 'email', 'phone', 'instagram', 'notes', 'tax_id', 'address'] as const
+const ALL_KIND_FIELDS = [...new Set<string>([...PILOT_FIELDS, ...TEAM_FIELDS])]
+
+export function saveClient(db: DB, c: ClientInput) {
+  if (!CLIENT_KINDS.includes(c.kind)) throw new Error('Indica si el cliente es piloto, equipo o particular')
+  if (!c.name?.trim()) throw new Error(c.kind === 'equipo' ? 'El nombre del equipo es obligatorio' : 'El nombre es obligatorio')
+  if (c.birth_date && !/^\d{4}-\d{2}-\d{2}$/.test(c.birth_date)) throw new Error('Fecha de nacimiento no válida')
+  const own: readonly string[] = c.kind === 'piloto' ? PILOT_FIELDS : c.kind === 'equipo' ? TEAM_FIELDS : []
+  const row: Record<string, SQLInputValue> = { kind: c.kind }
+  for (const f of COMMON_FIELDS) row[f] = nullIfEmpty(c[f])
+  // Solo se guardan los datos propios del tipo; los de otros tipos se vacían.
+  for (const f of ALL_KIND_FIELDS) row[f] = own.includes(f) ? (f === 'team_id' ? null : nullIfEmpty(c[f as keyof ClientInput] as string)) : null
+  if (row.instagram) row.instagram = String(row.instagram).replace(/^@+/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/.*$/, '') || null
+  if (c.kind === 'piloto' && c.team_id) {
+    const team = db.prepare('SELECT id, kind FROM clients WHERE id = ?').get(c.team_id) as { id: number; kind: string } | undefined
+    if (!team || team.kind !== 'equipo') throw new Error('El equipo elegido no existe')
+    if (c.id && team.id === c.id) throw new Error('Un piloto no puede ser su propio equipo')
+    row.team_id = team.id
+  }
+  return transaction(db, () => {
+    let id = c.id
+    const cols = Object.keys(row)
+    if (id) {
+      db.prepare(`UPDATE clients SET ${cols.map((k) => `${k}=@${k}`).join(', ')} WHERE id=@id`).run({ ...row, id })
+      // Si deja de ser equipo, sus pilotos se quedan sin equipo asignado.
+      if (c.kind !== 'equipo') db.prepare('UPDATE clients SET team_id = NULL WHERE team_id = ?').run(id)
+    } else {
+      id = Number(db.prepare(`INSERT INTO clients (${cols.join(', ')}) VALUES (${cols.map((k) => '@' + k).join(', ')})`).run(row).lastInsertRowid)
+    }
+    return db.prepare(`${CLIENT_SELECT} WHERE c.id = ?`).get(id)
+  })
+}
 export const like = (q: string) => `%${q.replace(/[\\%_]/g, (c) => '\\' + c)}%`
 
 export function normalizeTags(tags: string[]): string[] {
@@ -52,21 +97,8 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
   const getSession = (id: number) => withTags(db.prepare(`${SESSION_SELECT} WHERE s.id = ?`).get(id))
 
   // ---------- Clientes ----------
-  ipcMain.handle('clients:list', () =>
-    db.prepare(`SELECT c.*, (SELECT COUNT(*) FROM sessions s WHERE s.client_id = c.id) AS session_count
-                FROM clients c ORDER BY c.name COLLATE NOCASE`).all()
-  )
-  ipcMain.handle('clients:save', (_e, c: ClientInput) => {
-    if (!c.name?.trim()) throw new Error('El nombre del cliente es obligatorio')
-    const row = {
-      name: c.name.trim(), email: nullIfEmpty(c.email), phone: nullIfEmpty(c.phone), notes: nullIfEmpty(c.notes),
-      tax_id: nullIfEmpty(c.tax_id), address: nullIfEmpty(c.address)
-    }
-    let id = c.id
-    if (id) db.prepare('UPDATE clients SET name=@name, email=@email, phone=@phone, notes=@notes, tax_id=@tax_id, address=@address WHERE id=@id').run({ ...row, id })
-    else id = Number(db.prepare('INSERT INTO clients (name, email, phone, notes, tax_id, address) VALUES (@name, @email, @phone, @notes, @tax_id, @address)').run(row).lastInsertRowid)
-    return db.prepare('SELECT * FROM clients WHERE id = ?').get(id)
-  })
+  ipcMain.handle('clients:list', () => db.prepare(`${CLIENT_SELECT} ORDER BY c.name COLLATE NOCASE`).all())
+  ipcMain.handle('clients:save', (_e, c: ClientInput) => saveClient(db, c))
   ipcMain.handle('clients:remove', (_e, id: number) => {
     db.prepare('DELETE FROM clients WHERE id = ?').run(id)
   })
@@ -196,10 +228,13 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
     const term = q.trim()
     if (!term) return { clients: [], sessions: [], photos: [] }
     const p = like(term)
-    const clients = db.prepare(`SELECT c.*, (SELECT COUNT(*) FROM sessions s WHERE s.client_id = c.id) AS session_count
-      FROM clients c WHERE c.name LIKE ?1 ESCAPE '\\' OR c.email LIKE ?1 ESCAPE '\\' OR c.phone LIKE ?1 ESCAPE '\\'
+    const clients = db.prepare(`${CLIENT_SELECT}
+      WHERE c.name LIKE ?1 ESCAPE '\\' OR c.email LIKE ?1 ESCAPE '\\' OR c.phone LIKE ?1 ESCAPE '\\'
+        OR c.instagram LIKE ?1 ESCAPE '\\' OR c.racing_number = ?2 OR c.category LIKE ?1 ESCAPE '\\' OR c.vehicle LIKE ?1 ESCAPE '\\'
+        OR c.contact_name LIKE ?1 ESCAPE '\\' OR c.brand LIKE ?1 ESCAPE '\\'
+        OR EXISTS (SELECT 1 FROM clients t WHERE t.id = c.team_id AND t.name LIKE ?1 ESCAPE '\\')
         OR c.tax_id LIKE ?1 ESCAPE '\\' OR c.notes LIKE ?1 ESCAPE '\\'
-      ORDER BY c.name COLLATE NOCASE LIMIT 30`).all(p)
+      ORDER BY c.name COLLATE NOCASE LIMIT 30`).all(p, term.replace(/^#/, ''))
     const sessions = db.prepare(`${SESSION_SELECT}
       WHERE s.title LIKE ?1 ESCAPE '\\' OR s.location LIKE ?1 ESCAPE '\\' OR s.type LIKE ?1 ESCAPE '\\' OR s.notes LIKE ?1 ESCAPE '\\'
         OR c.name LIKE ?1 ESCAPE '\\' OR EXISTS (SELECT 1 FROM session_tags t WHERE t.session_id = s.id AND t.tag LIKE ?1 ESCAPE '\\')
