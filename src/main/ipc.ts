@@ -1,9 +1,10 @@
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { copyFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import type Database from 'better-sqlite3'
 import type { ClientInput, Photo, PhotoPatch, SessionInput, SessionStatus } from '../shared/types'
 import { SESSION_STATUSES } from '../shared/types'
+import type { SQLInputValue } from 'node:sqlite'
+import { transaction, type DB } from './db'
 import { collectFiles, importPhotos, SUPPORTED_EXT } from './importer'
 import { LocalStorage, sessionKey } from './storage'
 
@@ -15,9 +16,9 @@ const SESSION_SELECT = `
        ORDER BY (p.flag = 'pick') DESC, p.rating DESC, p.id LIMIT 1) AS cover_key
   FROM sessions s LEFT JOIN clients c ON c.id = s.client_id`
 
-const nullIfEmpty = (v: unknown) => (v === '' || v === undefined ? null : v)
+const nullIfEmpty = (v: string | null | undefined): string | null => (v === '' || v === undefined ? null : v)
 
-export function registerIpc(db: Database.Database, storage: LocalStorage): void {
+export function registerIpc(db: DB, storage: LocalStorage): void {
   // ---------- Clientes ----------
   ipcMain.handle('clients:list', () =>
     db.prepare(`SELECT c.*, (SELECT COUNT(*) FROM sessions s WHERE s.client_id = c.id) AS session_count
@@ -38,7 +39,7 @@ export function registerIpc(db: Database.Database, storage: LocalStorage): void 
   // ---------- Sesiones ----------
   ipcMain.handle('sessions:list', (_e, filter: { clientId?: number; status?: SessionStatus } = {}) => {
     const where: string[] = []
-    const params: unknown[] = []
+    const params: SQLInputValue[] = []
     if (filter.clientId) { where.push('s.client_id = ?'); params.push(filter.clientId) }
     if (filter.status) { where.push('s.status = ?'); params.push(filter.status) }
     const sql = `${SESSION_SELECT} ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
@@ -80,7 +81,7 @@ export function registerIpc(db: Database.Database, storage: LocalStorage): void 
   )
   ipcMain.handle('photos:update', (_e, ids: number[], patch: PhotoPatch) => {
     const sets: string[] = []
-    const params: Record<string, unknown> = {}
+    const params: Record<string, SQLInputValue> = {}
     if (patch.rating !== undefined) {
       if (!Number.isInteger(patch.rating) || patch.rating < 0 || patch.rating > 5) throw new Error('Valoración no válida')
       sets.push('rating = @rating'); params.rating = patch.rating
@@ -91,7 +92,7 @@ export function registerIpc(db: Database.Database, storage: LocalStorage): void 
     }
     if (!sets.length || !ids.length) return
     const stmt = db.prepare(`UPDATE photos SET ${sets.join(', ')} WHERE id = @id`)
-    db.transaction(() => ids.forEach((id) => stmt.run({ ...params, id })))()
+    transaction(db, () => ids.forEach((id) => stmt.run({ ...params, id })))
   })
   ipcMain.handle('photos:remove', async (_e, ids: number[]) => {
     const get = db.prepare('SELECT * FROM photos WHERE id = ?')
@@ -115,7 +116,7 @@ export function registerIpc(db: Database.Database, storage: LocalStorage): void 
     return importPhotos(db, storage, sessionId, files, (p) => e.sender.send('photos:import-progress', p))
   })
   ipcMain.handle('photos:exportPicks', async (e, sessionId: number) => {
-    const picks = db.prepare("SELECT * FROM photos WHERE session_id = ? AND flag = 'pick' ORDER BY file_name").all(sessionId) as Photo[]
+    const picks = db.prepare("SELECT * FROM photos WHERE session_id = ? AND flag = 'pick' ORDER BY file_name").all(sessionId) as unknown as Photo[]
     if (!picks.length) throw new Error('No hay fotos seleccionadas (marca alguna con P)')
     const win = BrowserWindow.fromWebContents(e.sender)!
     const res = await dialog.showOpenDialog(win, { title: 'Carpeta de destino', properties: ['openDirectory', 'createDirectory'] })

@@ -3,7 +3,7 @@
 Aplicación de escritorio para gestionar el trabajo de un fotógrafo profesional:
 clientes, sesiones y la selección (*culling*) de las fotos de cada sesión.
 
-**Stack:** Electron · React · TypeScript · Vite (electron-vite) · SQLite (better-sqlite3) · sharp · exifr
+**Stack:** Electron · React · TypeScript · Vite (electron-vite) · SQLite (node:sqlite, integrado en Electron) · sharp · exifr
 
 ## Funcionalidades (v0.1)
 
@@ -23,7 +23,7 @@ clientes, sesiones y la selección (*culling*) de las fotos de cada sesión.
 ## Desarrollo
 
 ```bash
-npm install        # recompila better-sqlite3 para Electron automáticamente
+npm install        # no compila nada: todo usa binarios precompilados
 npm run dev        # arranca la app con recarga en caliente
 npm run typecheck
 npm run test:e2e   # prueba de extremo a extremo con Playwright

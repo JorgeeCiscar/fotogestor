@@ -1,4 +1,6 @@
-import Database from 'better-sqlite3'
+import { DatabaseSync } from 'node:sqlite'
+
+export type DB = DatabaseSync
 
 const MIGRATIONS: string[] = [
   `
@@ -49,16 +51,29 @@ const MIGRATIONS: string[] = [
   `
 ]
 
-export function openDatabase(file: string): Database.Database {
-  const db = new Database(file)
-  db.pragma('journal_mode = WAL')
-  db.pragma('foreign_keys = ON')
-  const current = db.pragma('user_version', { simple: true }) as number
+/** Ejecuta fn dentro de una transacción (rollback si lanza un error). */
+export function transaction<T>(db: DB, fn: () => T): T {
+  db.exec('BEGIN')
+  try {
+    const result = fn()
+    db.exec('COMMIT')
+    return result
+  } catch (err) {
+    db.exec('ROLLBACK')
+    throw err
+  }
+}
+
+export function openDatabase(file: string): DB {
+  const db = new DatabaseSync(file)
+  db.exec('PRAGMA journal_mode = WAL')
+  db.exec('PRAGMA foreign_keys = ON')
+  const current = (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version
   for (let v = current; v < MIGRATIONS.length; v++) {
-    db.transaction(() => {
+    transaction(db, () => {
       db.exec(MIGRATIONS[v])
-      db.pragma(`user_version = ${v + 1}`)
-    })()
+      db.exec(`PRAGMA user_version = ${v + 1}`)
+    })
   }
   return db
 }

@@ -1,6 +1,6 @@
 import { mkdir, readdir, stat } from 'node:fs/promises'
 import { basename, dirname, extname, join, parse } from 'node:path'
-import type Database from 'better-sqlite3'
+import type { DB } from './db'
 import sharp from 'sharp'
 import exifr from 'exifr'
 import type { ImportProgress, ImportResult } from '../shared/types'
@@ -29,7 +29,7 @@ function formatShutter(t?: number): string | null {
 }
 
 export async function importPhotos(
-  db: Database.Database,
+  db: DB,
   storage: LocalStorage,
   sessionId: number,
   files: string[],
