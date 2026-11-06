@@ -1,9 +1,9 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import sharp from 'sharp'
 import type { GalleryExportOptions, Photo, Session, Settings } from '../shared/types'
 import { transaction, type DB } from './db'
+import { imageJob } from './imageJobs'
 import { getSettings } from './settings'
 import type { LocalStorage } from './storage'
 
@@ -14,18 +14,7 @@ const esc = (s: unknown) =>
 const scriptJson = (v: unknown) => JSON.stringify(v).replace(/</g, '\\u003c').replace(/\u2028|\u2029/g, '')
 
 async function galleryImage(path: string, watermark: string): Promise<string> {
-  let img = sharp(path).resize(1600, 1600, { fit: 'inside', withoutEnlargement: true })
-  if (watermark) {
-    const { data, info } = await img.toBuffer({ resolveWithObject: true })
-    const size = Math.round(Math.min(info.width, info.height) / 11)
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${info.width}" height="${info.height}">
-      <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif"
-        font-size="${size}" font-weight="700" fill="#fff" fill-opacity="0.38" stroke="#000" stroke-opacity="0.18" stroke-width="${Math.max(1, size / 30)}"
-        transform="rotate(-24 ${info.width / 2} ${info.height / 2})">${esc(watermark)}</text></svg>`
-    img = sharp(data).composite([{ input: Buffer.from(svg) }])
-  }
-  const webp = await img.webp({ quality: 78 }).toBuffer()
-  return `data:image/webp;base64,${webp.toString('base64')}`
+  return (await imageJob({ op: 'gallery', src: path, watermark })).dataUrl
 }
 
 export function galleryHtml(session: Session, settings: Settings, photos: { id: number; name: string; src: string }[]): string {

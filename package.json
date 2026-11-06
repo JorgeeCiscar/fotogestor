@@ -1,6 +1,6 @@
 {
   "name": "fotogestor",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Gestión de fotografías para fotógrafos profesionales",
   "main": "out/main/index.js",
   "scripts": {

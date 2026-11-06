@@ -1,5 +1,5 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron'
-import sharp from 'sharp'
+import { imageJob } from './imageJobs'
 import type { Settings } from '../shared/types'
 import { transaction, type DB } from './db'
 
@@ -50,7 +50,6 @@ export function registerSettingsIpc(db: DB): void {
       filters: [{ name: 'Imágenes', extensions: ['png', 'jpg', 'jpeg', 'webp', 'svg'] }]
     })
     if (res.canceled || !res.filePaths[0]) return null
-    const png = await sharp(res.filePaths[0]).resize(600, 300, { fit: 'inside', withoutEnlargement: true }).png().toBuffer()
-    return `data:image/png;base64,${png.toString('base64')}`
+    return (await imageJob({ op: 'logo', src: res.filePaths[0] })).dataUrl
   })
 }

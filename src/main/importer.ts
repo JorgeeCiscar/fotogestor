@@ -1,17 +1,15 @@
 import { mkdir, readdir, stat } from 'node:fs/promises'
 import { basename, dirname, extname, join, parse } from 'node:path'
 import type { DB } from './db'
-import sharp from 'sharp'
 import exifr from 'exifr'
 import type { ImportProgress, ImportResult } from '../shared/types'
-import { isRaw, RAW_EXT, readRawPreview } from './raw'
+import { imageJob } from './imageJobs'
+import { isRaw, RAW_EXT } from './raw'
 import { LocalStorage, sessionKey } from './storage'
 
 export const IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp']
 export const SUPPORTED_EXT = [...IMAGE_EXT, ...RAW_EXT]
 
-/** Ángulo de rotación para cada valor de orientación EXIF (solo rotaciones). */
-const ORIENTATION_ANGLE: Record<number, number> = { 3: 180, 6: 90, 8: 270 }
 
 /** Expande carpetas (recursivamente) y filtra extensiones soportadas. */
 export async function collectFiles(paths: string[]): Promise<string[]> {
@@ -90,16 +88,10 @@ export async function importPhotos(
         .parse(abs, { translateValues: false, pick: ['DateTimeOriginal', 'Make', 'Model', 'LensModel', 'ISO', 'FNumber', 'ExposureTime', 'FocalLength', 'Orientation'] })
         .catch(() => null)
 
-      // Para RAW se trabaja con la vista previa JPEG incrustada; el original no se modifica.
-      const source: string | Buffer = raw ? await readRawPreview(abs) : abs
-      const meta = await sharp(source).metadata()
-      // Las vistas previas de RAW no suelen llevar orientación propia: se usa la del RAW.
-      const orientation = meta.orientation ?? (raw ? Number(exif?.Orientation) || 1 : 1)
-      const angle = meta.orientation ? undefined : ORIENTATION_ANGLE[orientation]
-      const rotated = orientation >= 5
-      const pipeline = () => (angle === undefined ? sharp(source).rotate() : sharp(source).rotate(angle))
-      await pipeline().resize(480, 480, { fit: 'inside' }).webp({ quality: 78 }).toFile(storage.resolve(thumbKey))
-      await pipeline().resize(2000, 2000, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 85 }).toFile(storage.resolve(previewKey))
+      const dims = await imageJob({
+        op: 'renditions', src: abs, isRaw: raw, exifOrientation: Number(exif?.Orientation) || 1,
+        thumbPath: storage.resolve(thumbKey), previewPath: storage.resolve(previewKey)
+      })
 
       const camera = cameraName(exif?.Make, exif?.Model)
 
@@ -110,8 +102,8 @@ export async function importPhotos(
         thumb_key: thumbKey,
         preview_key: previewKey,
         file_size: size,
-        width: (rotated ? meta.height : meta.width) ?? null,
-        height: (rotated ? meta.width : meta.height) ?? null,
+        width: dims.width,
+        height: dims.height,
         taken_at: exif?.DateTimeOriginal instanceof Date ? exif.DateTimeOriginal.toISOString() : null,
         camera,
         lens: exif?.LensModel ?? null,
