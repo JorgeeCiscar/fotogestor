@@ -208,8 +208,10 @@ export interface FolderPhoto {
   path: string
   name: string
   size: number
-  /** id de la foto si ya está en este evento. */
+  /** id de la foto si ya está en un evento. */
   photo_id: number | null
+  /** Evento en el que ya está, si lo está. */
+  session_title: string | null
 }
 export interface FolderListing {
   folder: string
@@ -267,6 +269,7 @@ export interface Settings {
   default_irpf_rate: number
   invoice_footer: string
   watermark_text: string
+  last_folder: string
 }
 
 export type InvoiceKind = 'presupuesto' | 'factura'
@@ -357,10 +360,11 @@ export interface Api {
     remove(id: number): Promise<void>
   }
   folder: {
-    choose(sessionId: number): Promise<FolderListing | null>
-    reopen(folder: string, sessionId: number): Promise<FolderListing>
+    choose(sessionId: number | null): Promise<FolderListing | null>
+    reopen(folder: string, sessionId: number | null): Promise<FolderListing>
     add(opts: AddFromFolderOptions): Promise<ImportResult>
     thumbUrl(path: string): string
+    previewUrl(path: string): string
     onProgress(cb: (p: ImportProgress) => void): () => void
   }
   days: {

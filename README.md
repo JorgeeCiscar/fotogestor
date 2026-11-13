@@ -5,7 +5,7 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
 
 **Stack:** Electron · React · TypeScript · Vite (electron-vite) · SQLite (`node:sqlite`, integrado en Electron) · sharp · exifr
 
-## Funcionalidades (v0.15)
+## Funcionalidades (v0.16)
 
 - **Clientes** de tres tipos, que se eligen al darlos de alta:
   - **Piloto**: dorsal, categoría, moto/coche, equipo, nacionalidad, fecha de nacimiento, licencia y,
@@ -22,8 +22,9 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
   y pueden moverse entre días.
 - **Fotos por piloto**: cada foto se asigna a uno o varios pilotos (`photo_pilots`), con filtro dentro del
   evento y listado en la ficha del piloto.
-- **Explorador de carpeta**: se abre una carpeta del disco, se ven sus fotos (miniaturas generadas a
-  demanda por el protocolo `fotodir://`) y se añaden al evento con día, piloto y tipo de prueba.
+- **Carpetas**: apartado propio para mirar una carpeta del disco y ver sus fotos (miniaturas y vista
+  grande generadas a demanda por el protocolo `fotodir://`, con caché), con visor a pantalla completa.
+  Opcionalmente se añaden a un evento con día, piloto y tipo de prueba.
   Por defecto quedan **enlazadas** (`external_path`), sin copiar los originales.
 - **Filtro por formato** (`photos.ext`) en la carpeta, el evento y la fototeca.
 - **Importación** (copia) de ficheros o carpetas: JPEG, PNG, TIFF, WebP y **RAW** (CR2, CR3, NEF, ARW, RAF,

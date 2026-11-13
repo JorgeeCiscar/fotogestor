@@ -5,7 +5,7 @@ export type ImageJob =
   | { op: 'renditions'; src: string; isRaw: boolean; exifOrientation: number; thumbPath: string; previewPath: string }
   | { op: 'gallery'; src: string; watermark: string }
   | { op: 'logo'; src: string }
-  | { op: 'thumb'; src: string; dest: string }
+  | { op: 'thumb'; src: string; dest: string; px?: number }
 
 export type ImageJobResult = { width: number | null; height: number | null } | { dataUrl: string } | { ok: true }
 type ResultOf<T extends ImageJob['op']> =

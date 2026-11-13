@@ -7,6 +7,7 @@ import ContactDetail from './components/ContactDetail'
 import SessionsView from './components/SessionsView'
 import SessionDetail from './components/SessionDetail'
 import LibraryView from './components/LibraryView'
+import FolderBrowser from './components/FolderBrowser'
 import SearchView from './components/SearchView'
 import InvoicesView from './components/InvoicesView'
 import SettingsView from './components/SettingsView'
@@ -22,6 +23,7 @@ export type View =
   | { name: 'contact'; id: number }
   | { name: 'sessions'; clientId?: number; create?: boolean }
   | { name: 'library'; clientId?: number; pilotId?: number }
+  | { name: 'folders' }
   | { name: 'session'; id: number; photoId?: number }
   | { name: 'search'; q?: string }
   | { name: 'invoices'; openId?: number; newForSession?: number; newForClient?: number }
@@ -32,6 +34,7 @@ const NAV: [View['name'], string][] = [
   ['dashboard', 'Panel'],
   ['sessions', 'Eventos'],
   ['library', 'Fotos'],
+  ['folders', 'Carpetas'],
   ['clients', 'Clientes'],
   ['contacts', 'Contactos'],
   ['invoices', 'Facturación'],
@@ -77,6 +80,10 @@ export default function App() {
         {view.name === 'contacts' && <ContactsView nav={nav} />}
         {view.name === 'contact' && <ContactDetail key={view.id} id={view.id} nav={nav} />}
         {view.name === 'sessions' && <SessionsView nav={nav} clientId={view.clientId} create={view.create} />}
+        {view.name === 'folders' && (
+          <FolderBrowser sessionId={null} days={[]} defaultDayId={null}
+            onClose={() => nav({ name: 'library' })} onAdded={() => undefined} />
+        )}
         {view.name === 'library' && <LibraryView key={`${view.clientId ?? 0}-${view.pilotId ?? 0}`} nav={nav} clientId={view.clientId} pilotId={view.pilotId} />}
         {view.name === 'session' && <SessionDetail key={view.id} id={view.id} photoId={view.photoId} nav={nav} />}
         {view.name === 'search' && <SearchView nav={nav} initial={view.q} />}

@@ -52,7 +52,9 @@ async function run(job: ImageJob): Promise<ImageJobResult> {
       // Miniatura de un archivo que aún no está en la biblioteca (RAW incluido).
       const isRawFile = /\.(cr2|cr3|crw|nef|nrw|arw|srf|sr2|raf|dng|orf|rw2|pef|srw|x3f|3fr|iiq|erf|mef|mos|kdc|rwl)$/i.test(job.src)
       const source: string | Buffer = isRawFile ? await readRawPreview(job.src) : job.src
-      await sharp(source).rotate().resize(420, 420, { fit: 'inside' }).webp({ quality: 72 }).toFile(job.dest)
+      const px = job.px ?? 420
+      await sharp(source).rotate().resize(px, px, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: px > 1000 ? 82 : 72 }).toFile(job.dest)
       return { ok: true }
     }
     case 'logo': {

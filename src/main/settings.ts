@@ -14,7 +14,9 @@ export const DEFAULT_SETTINGS: Settings = {
   default_tax_rate: 21,
   default_irpf_rate: 0,
   invoice_footer: '',
-  watermark_text: ''
+  watermark_text: '',
+  /** Última carpeta abierta en «Carpetas» (no se muestra en Ajustes). */
+  last_folder: ''
 }
 
 const NUMERIC: (keyof Settings)[] = ['default_tax_rate', 'default_irpf_rate']

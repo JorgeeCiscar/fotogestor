@@ -724,8 +724,14 @@ Notas: Entregar las fotos el lunes`)
   const card = path.join(S, 'tarjeta')
   fs.mkdirSync(card)
   for (const f of ['DSCF1000.jpg', 'DSCF1001.jpg', 'DSCF1002.jpg']) fs.copyFileSync(path.join(S, 'imgs', f), path.join(card, f))
-  await require('sharp')({ create: { width: 800, height: 600, channels: 3, background: '#2a6fb0' } })
+  const sharp = require('sharp')
+  await sharp({ create: { width: 800, height: 600, channels: 3, background: '#2a6fb0' } })
     .png().toFile(path.join(card, 'DSCF1009.png'))
+  // Una vertical y una horizontal, para comprobar que se ven con su forma.
+  await sharp({ create: { width: 600, height: 900, channels: 3, background: '#b02a6f' } })
+    .jpeg().toFile(path.join(card, 'VERTICAL.jpg'))
+  await sharp({ create: { width: 1200, height: 600, channels: 3, background: '#2ab06f' } })
+    .jpeg().toFile(path.join(card, 'HORIZONTAL.jpg'))
 
   await win.click('nav >> text=Eventos'); await win.click('text=+ Nuevo evento')
   await win.fill('.modal label:has-text("Título") input', 'Karting Recas')
@@ -741,8 +747,8 @@ Notas: Entregar las fotos el lunes`)
   await stubOpen(card)
   await win.click('.dropzone button:has-text("Abrir la carpeta")')
   await win.waitForSelector('.folder-browser')
-  await win.waitForFunction(() => document.querySelectorAll('.folder-thumb').length === 4, null, { timeout: 20000 })
-  check('carpeta: muestra las fotos sin importarlas', (await win.locator('.folder-thumb').count()) === 4)
+  await win.waitForFunction(() => document.querySelectorAll('.folder-thumb').length === 6, null, { timeout: 20000 })
+  check('carpeta: muestra las fotos sin importarlas', (await win.locator('.folder-thumb').count()) === 6)
   // Las miniaturas se generan a demanda: se espera a que aparezcan.
   const thumbsReady = await win.waitForFunction(
     () => [...document.querySelectorAll('.folder-thumb img')].every((i) => i.complete && i.naturalWidth > 0),
@@ -755,9 +761,42 @@ Notas: Entregar las fotos el lunes`)
   check('carpeta: filtro por formato', (await win.locator('.folder-thumb').count()) === 1, String(await win.locator('.folder-thumb').count()))
   await win.selectOption('select[aria-label="Formato"]', 'jpg')
   await win.waitForTimeout(300)
-  check('carpeta: filtro JPEG', (await win.locator('.folder-thumb').count()) === 3)
+  check('carpeta: filtro JPEG', (await win.locator('.folder-thumb').count()) === 5)
   await win.selectOption('select[aria-label="Formato"]', '')
   await win.waitForTimeout(300)
+
+  // Cada foto se ve con su forma: la vertical, vertical.
+  const shapes = await win.evaluate(() => {
+    const out = {}
+    for (const el of document.querySelectorAll('.folder-thumb')) {
+      const img = el.querySelector('img')
+      const name = el.querySelector('.thumb-name').textContent
+      const r = img.getBoundingClientRect()
+      out[name] = Math.round((r.width / r.height) * 100) / 100
+    }
+    return out
+  })
+  check('carpeta: la vertical se ve vertical', shapes['VERTICAL.jpg'] < 0.8, `proporción ${shapes['VERTICAL.jpg']}`)
+  check('carpeta: la horizontal se ve horizontal', shapes['HORIZONTAL.jpg'] > 1.5, `proporción ${shapes['HORIZONTAL.jpg']}`)
+  await shot('carpeta-formas')
+
+  // Visor a pantalla completa con doble clic.
+  await win.dblclick('.folder-thumb:has-text("VERTICAL.jpg")')
+  await win.waitForSelector('.folder-viewer')
+  const big = await win.waitForFunction(() => {
+    const img = document.querySelector('.folder-viewer img')
+    return img && img.complete && img.naturalWidth > 0 ? { w: img.naturalWidth, h: img.naturalHeight } : null
+  }, null, { timeout: 20000 }).then((h) => h.jsonValue())
+  check('carpeta: visor a pantalla completa', big.h > big.w, `${big.w}×${big.h}`)
+  await shot('carpeta-visor')
+  // VERTICAL.jpg es la última de la carpeta: se retrocede con la flecha izquierda.
+  await win.keyboard.press('ArrowLeft')
+  await win.waitForTimeout(400)
+  check('carpeta: pasar de foto con las flechas', (await win.textContent('.folder-viewer-bar')).includes('HORIZONTAL.jpg'),
+    await win.textContent('.folder-viewer-bar'))
+  await win.keyboard.press('Escape')
+  await win.waitForTimeout(300)
+  check('carpeta: Esc cierra el visor', (await win.locator('.folder-viewer').count()) === 0)
 
   // Seleccionar dos y añadirlas etiquetadas con día, piloto y prueba.
   await win.click('.folder-thumb >> nth=0')
@@ -798,6 +837,22 @@ Notas: Entregar las fotos el lunes`)
   await win.selectOption('select[aria-label="Filtrar por prueba"]', 'Clasificaciones')
   await win.waitForTimeout(300)
   check('evento: filtro por prueba', (await win.locator('.thumb').count()) === 2)
+
+  // --- Apartado «Carpetas»: ver una carpeta sin añadir nada ---
+  await stubOpen(card)
+  await win.click('nav >> text=Carpetas')
+  await win.waitForSelector('.folder-browser')
+  await win.waitForFunction(() => document.querySelectorAll('.folder-thumb').length === 6, null, { timeout: 20000 })
+  check('carpetas: se abre desde el menú', (await win.locator('.folder-thumb').count()) === 6)
+  check('carpetas: sin barra de añadir', (await win.locator('.folder-bar.quiet').count()) === 1)
+  // Las 2 añadidas aquí más DSCF1002.jpg, que es el mismo archivo importado antes a otro evento.
+  check('carpetas: marca las que ya están en un evento', (await win.locator('.folder-thumb.done').count()) === 3,
+    String(await win.locator('.folder-thumb.done').count()))
+  await shot('carpetas')
+  await win.click('.folder-head button:has-text("Añadir a un evento")')
+  check('carpetas: se puede añadir eligiendo evento', (await win.locator('.folder-bar label:has-text("Evento")').count()) === 1)
+  await win.click('.folder-head button:has-text("Cerrar")')
+  await win.waitForTimeout(300)
 
   // --- Panel ---
   await win.click('nav >> text=Panel'); await win.waitForTimeout(500)

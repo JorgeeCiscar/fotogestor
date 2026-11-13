@@ -14,6 +14,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.16.0',
+    date: '2026-11-13',
+    title: 'Ver carpetas sin añadir nada',
+    changes: [
+      'Nuevo apartado «Carpetas»: eliges una carpeta y ves sus fotos directamente, sin importar ni añadir nada. Recuerda la última que abriste.',
+      'Doble clic abre la foto a pantalla completa; con ← → pasas de una a otra y con Esc sales.',
+      'Las fotos se ven con su forma real: las verticales en vertical y las horizontales en horizontal, en las carpetas, en el evento y en Fotos.',
+      'Si quieres añadirlas a un evento, el botón «Añadir a un evento…» saca los campos de día, piloto y prueba.',
+      'En «Carpetas» se marcan las fotos que ya están en algún evento, y te dice en cuál.'
+    ]
+  },
+  {
     version: '0.15.0',
     date: '2026-11-13',
     title: 'Trabajar sobre la carpeta',

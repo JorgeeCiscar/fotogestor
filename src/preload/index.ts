@@ -18,6 +18,7 @@ const api: Api = {
     reopen: invoke('folder:reopen'),
     add: invoke('folder:add'),
     thumbUrl: (path: string) => `fotodir://thumb/${encodeURIComponent(path)}`,
+    previewUrl: (path: string) => `fotodir://preview/${encodeURIComponent(path)}`,
     onProgress: (cb) => subscribe('folder:progress', cb)
   },
   days: { list: invoke('days:list'), save: invoke('days:save'), remove: invoke('days:remove') },
