@@ -8,6 +8,7 @@ import LibraryView from './components/LibraryView'
 import SearchView from './components/SearchView'
 import InvoicesView from './components/InvoicesView'
 import SettingsView from './components/SettingsView'
+import TariffsView from './components/TariffsView'
 import UpdateBanner, { AppVersion } from './components/UpdateBanner'
 import WhatsNew from './components/WhatsNew'
 
@@ -20,6 +21,7 @@ export type View =
   | { name: 'session'; id: number; photoId?: number }
   | { name: 'search'; q?: string }
   | { name: 'invoices'; openId?: number; newForSession?: number; newForClient?: number }
+  | { name: 'tariffs' }
   | { name: 'settings' }
 
 const NAV: [View['name'], string][] = [
@@ -28,6 +30,7 @@ const NAV: [View['name'], string][] = [
   ['library', 'Fotos'],
   ['clients', 'Clientes'],
   ['invoices', 'Facturación'],
+  ['tariffs', 'Tarifas'],
   ['search', 'Buscar'],
   ['settings', 'Ajustes']
 ]
@@ -70,6 +73,7 @@ export default function App() {
         {view.name === 'session' && <SessionDetail key={view.id} id={view.id} photoId={view.photoId} nav={nav} />}
         {view.name === 'search' && <SearchView nav={nav} initial={view.q} />}
         {view.name === 'invoices' && <InvoicesView nav={nav} openId={view.openId} newForSession={view.newForSession} newForClient={view.newForClient} />}
+        {view.name === 'tariffs' && <TariffsView />}
         {view.name === 'settings' && <SettingsView />}
       </main>
       <WhatsNew />

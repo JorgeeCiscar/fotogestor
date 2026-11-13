@@ -303,3 +303,21 @@ label.check input { width: auto; margin: 0; accent-color: var(--accent); }
 .pilot-link { display: flex; align-items: center; width: 100%; text-align: left; background: var(--panel); border-color: var(--line); }
 .pilot-link:hover { background: var(--panel-3); }
 @media (max-width: 1100px) { .client-cols { grid-template-columns: 1fr; } }
+
+/* ---------- Tarifas ---------- */
+.tariff-section { margin-bottom: 28px; }
+.tariff-section h2 { margin-bottom: 4px; }
+.tariff-section .table { margin-top: 10px; }
+.tariffs td { padding: 4px 6px; vertical-align: middle; }
+.tariffs input, .tariffs select { width: 100%; }
+.tariffs .tariff-price { white-space: nowrap; }
+.tariffs .tariff-price input { width: 90px; }
+.tariffs th:nth-child(1) { width: 170px; }
+.tariffs .actions { white-space: nowrap; width: 150px; }
+.tariff-block { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; background: #222; }
+.tariff-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tariff-head h3 { margin: 0; }
+.tariff-head select { max-width: 320px; }
+.items-total td { font-weight: 600; border-top: 1px solid var(--border); padding-top: 6px; }
+.form .hint.link { align-self: flex-start; font-size: 12px; }
+.tariffs tr.dirty td { background: #2e2c22; }

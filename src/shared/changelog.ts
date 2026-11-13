@@ -14,6 +14,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.10.0',
+    date: '2026-11-13',
+    title: 'Tus tarifas',
+    changes: [
+      'Nuevo apartado «Tarifas»: pon tu precio para cada tipo de sesión y tus extras (álbumes, desplazamiento, urgencia…).',
+      'Al crear una sesión, al elegir el tipo se aplica su tarifa y puedes añadirle extras; el precio se calcula solo.',
+      'Puedes cambiar el precio a mano cuando hagas una excepción, y volver al de la tarifa con un clic.',
+      'El presupuesto de esa sesión ya sale con sus partidas: concepto, cantidad e importe.'
+    ]
+  },
+  {
     version: '0.9.0',
     date: '2026-11-13',
     title: 'Ficha de cliente',

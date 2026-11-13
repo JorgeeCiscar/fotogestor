@@ -53,3 +53,9 @@ export function ageFrom(birth: string | null | undefined, now = new Date()): num
   if (now.getMonth() + 1 < m || (now.getMonth() + 1 === m && now.getDate() < d)) age--
   return age
 }
+
+/** Suma de las partidas de una sesión o documento. */
+export function itemsTotal(items: { quantity: number; unit_price: number }[]): number {
+  const n = items.reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.unit_price) || 0), 0)
+  return Math.round((n + Number.EPSILON) * 100) / 100
+}

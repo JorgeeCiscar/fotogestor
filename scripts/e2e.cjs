@@ -59,7 +59,15 @@ function check(name, ok, detail = '') {
   const stubOpen = (p) => app.evaluate(({ dialog }, p) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [p] }) }, p)
   const stubSave = (p) => app.evaluate(({ dialog }, p) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath: p }) }, p)
   const shot = (name) => win.screenshot({ path: path.join(S, 'shots', name + '.png') })
-  const toast = async () => (await win.waitForSelector('.toast')).textContent()
+  /** Texto del aviso emergente; con `expect` espera a que aparezca ese aviso concreto. */
+  const toast = async (expect) => {
+    if (expect) {
+      await win.waitForFunction((t) => document.querySelector('.toast')?.textContent?.includes(t), expect, { timeout: 20000 }).catch(() => {})
+    } else {
+      await win.waitForSelector('.toast')
+    }
+    return win.textContent('.toast')
+  }
 
   // --- Ajustes ---
   await win.click('nav >> text=Ajustes')
@@ -150,7 +158,7 @@ function check(name, ok, detail = '') {
   await win.click('.dropzone button')
   await win.waitForFunction((n) => document.querySelectorAll('.thumb img').length === n
     || /error|importadas/.test(document.querySelector('.toast')?.textContent ?? ''), expectedPhotos, { timeout: 60000 })
-  check('importación', (await toast()).includes(`${expectedPhotos} importadas`), await win.textContent('.toast'))
+  check('importación', (await toast(`${expectedPhotos} importadas`)).includes(`${expectedPhotos} importadas`), await win.textContent('.toast'))
   if (process.env.E2E_RAW) check('distintivo RAW', (await win.locator('.raw-badge').count()) === 1)
   await win.click('button:has-text("+ Importar fotos")')
   await win.waitForFunction(() => document.querySelector('.toast')?.textContent?.includes('ya existían'))
@@ -209,7 +217,7 @@ function check(name, ok, detail = '') {
   await stubSave(galleryFile)
   await win.click('button:has-text("Galería cliente")')
   await win.click('.modal button:has-text("Crear galería")')
-  check('galería exportada', (await toast()).includes('Galería con 3 fotos'), await win.textContent('.toast'))
+  check('galería exportada', (await toast('Galería con')).includes('Galería con 3 fotos'), await win.textContent('.toast'))
   check('tamaño de la galería', fs.statSync(galleryFile).size > 10000, `${Math.round(fs.statSync(galleryFile).size / 1024)} KB`)
 
   // El cliente abre la galería en su navegador y marca 2 favoritas.
@@ -237,7 +245,7 @@ function check(name, ok, detail = '') {
   await win.click('button:has-text("Importar selección")')
   await win.fill('.modal textarea', `Hola! aquí va:\n${code}\nGracias`)
   await win.click('.modal button:has-text("Importar")')
-  check('selección importada', (await toast()).includes('2 fotos'), await win.textContent('.toast'))
+  check('selección importada', (await toast('Selección del cliente')).includes('2 fotos'), await win.textContent('.toast'))
   await win.waitForTimeout(300)
   check('filtro favoritas del cliente', (await win.locator('.thumb').count()) === 2)
   await shot('sesion-favoritas')
@@ -325,7 +333,7 @@ function check(name, ok, detail = '') {
   const flat = path.join(S, 'out', 'copia'); fs.mkdirSync(flat)
   await stubOpen(flat)
   await win.click('button:has-text("Copiar a carpeta")')
-  check('fototeca: copia', (await toast()).includes(`${expectedPhotos + 2} fotos copiadas`), await win.textContent('.toast'))
+  check('fototeca: copia', (await toast('fotos copiadas')).includes(`${expectedPhotos + 2} fotos copiadas`), await win.textContent('.toast'))
   const flatFiles = fs.readdirSync(flat)
   check('fototeca: nombres repetidos conservados', flatFiles.length === expectedPhotos + 2 && flatFiles.includes('DSCF1000 (2).jpg'), flatFiles.join(', '))
   // Copiar en subcarpetas por sesión.
@@ -486,6 +494,59 @@ Notas: Entregar las fotos el lunes`)
   await win.click('.client-activity tr:has-text("F-2026-001")')
   await win.waitForSelector('.modal.wide')
   check('ficha: abre la factura', (await win.textContent('.modal h2')).includes('F-2026-001'))
+  await win.keyboard.press('Escape')
+
+  // --- Tarifas: lista de precios y su efecto al crear sesiones ---
+  await win.click('nav >> text=Tarifas')
+  await win.click('button:has-text("+ Añadir tipo de sesión")')
+  await win.selectOption('.tariffs tr:last-child select', 'Carrera')
+  await win.fill('.tariffs tr:last-child td:nth-child(2) input', 'Cobertura de carrera')
+  await win.fill('.tariffs tr:last-child .tariff-price input', '450')
+  await win.click('.tariffs tr:last-child button:has-text("Añadir")')
+  await win.waitForSelector('.tariffs input[value="Cobertura de carrera"]')
+  await win.click('.tariff-section:has-text("Extras") button:has-text("+ Añadir extra")')
+  await win.fill('.tariff-section:has-text("Extras") tr:last-child td:nth-child(1) input', 'Desplazamiento')
+  await win.fill('.tariff-section:has-text("Extras") tr:last-child .tariff-price input', '80')
+  await win.click('.tariff-section:has-text("Extras") tr:last-child button:has-text("Añadir")')
+  await win.waitForSelector('.tariffs input[value="Desplazamiento"]')
+  check('tarifas: guardadas', (await win.locator('.tariffs input[value="Cobertura de carrera"]').count()) === 1
+    && (await win.locator('.tariffs input[value="Desplazamiento"]').count()) === 1)
+  // Se editan en la propia tabla: al salir del campo se guarda.
+  await win.fill('.tariff-section:has-text("tipo de sesión") .tariff-price input', '500')
+  check('tarifas: avisa de cambios sin guardar', (await win.locator('.tariffs tr.dirty').count()) === 1)
+  await win.click('.tariffs tr.dirty button:has-text("Guardar")')
+  await win.waitForTimeout(500)
+  await win.click('nav >> text=Panel'); await win.click('nav >> text=Tarifas'); await win.waitForTimeout(400)
+  check('tarifas: edición en la tabla', (await win.inputValue('.tariff-section:has-text("tipo de sesión") .tariff-price input')) === '500')
+  await shot('tarifas')
+
+  // Al crear una sesión de ese tipo, su tarifa se aplica sola.
+  await win.click('nav >> text=Sesiones'); await win.click('text=+ Nueva sesión')
+  await win.fill('.modal label:has-text("Título") input', 'ESBK Montmeló - Carrera 1')
+  await win.selectOption('.modal label:has-text("Tipo") select', 'Carrera')
+  await win.waitForSelector('.tariff-block .items')
+  check('tarifa aplicada al elegir el tipo', (await win.inputValue('.modal input[type=number]')) === '500',
+    await win.inputValue('.modal input[type=number]'))
+  await win.selectOption('select[aria-label="Añadir extra"]', { label: 'Desplazamiento — 80,00 €' })
+  await win.waitForTimeout(300)
+  check('extra añadido y precio actualizado', (await win.inputValue('.modal input[type=number]')) === '580',
+    await win.inputValue('.modal input[type=number]'))
+  check('total de la tarifa', (await win.textContent('.items-total')).includes('580,00'))
+  await shot('sesion-tarifa')
+  await win.click('.modal button:has-text("Guardar")')
+  await win.waitForSelector('.session-page')
+  check('sesión guardada con su precio', (await win.textContent('.session-title')).includes('580,00'))
+
+  // Las partidas llegan al presupuesto.
+  await win.click('.page-header button:has-text("Presupuesto")')
+  await win.waitForSelector('.modal.wide')
+  const lines = await win.locator('.items tbody tr').count()
+  const conceptos = await win.locator('.items tbody tr td:first-child input').evaluateAll((els) => els.map((e) => e.value))
+  check('presupuesto con las partidas de la sesión', lines === 2 && conceptos.includes('Cobertura de carrera') && conceptos.includes('Desplazamiento'),
+    conceptos.join(' | '))
+  check('presupuesto: total con IVA e IRPF', (await win.textContent('.totals-box .grand')).includes('614,80'),
+    await win.textContent('.totals-box .grand'))
+  await shot('presupuesto-tarifa')
   await win.keyboard.press('Escape')
 
   // --- Panel ---

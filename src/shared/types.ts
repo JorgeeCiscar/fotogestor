@@ -74,11 +74,34 @@ export interface Session {
   client_pick_count?: number
   cover_key?: string | null
   tags: string[]
+  items: SessionItem[]
 }
 export type SessionInput = Omit<
   Session,
   'id' | 'created_at' | 'client_name' | 'photo_count' | 'pick_count' | 'client_pick_count' | 'cover_key'
 > & { id?: number }
+
+export type TariffCategory = 'sesion' | 'extra'
+export interface Tariff {
+  id: number
+  category: TariffCategory
+  /** Tipo de sesión al que se aplica (solo en category 'sesion'). */
+  session_type: string | null
+  label: string
+  price: number
+  unit: string | null
+  notes: string | null
+  position: number
+}
+export type TariffInput = Omit<Tariff, 'id' | 'position'> & { id?: number; position?: number }
+
+/** Partida acordada en una sesión (copia de la tarifa en ese momento). */
+export interface SessionItem {
+  id?: number
+  description: string
+  quantity: number
+  unit_price: number
+}
 
 export interface Photo {
   id: number
@@ -250,6 +273,11 @@ export interface Api {
     copyTo(ids: number[], opts: CopyOptions): Promise<{ copied: number; folder: string } | null>
     startDrag(ids: number[]): void
     onCopyProgress(cb: (p: CopyProgress) => void): () => void
+  }
+  tariffs: {
+    list(): Promise<Tariff[]>
+    save(t: TariffInput): Promise<Tariff>
+    remove(id: number): Promise<void>
   }
   tags(): Promise<string[]>
   championships(): Promise<string[]>

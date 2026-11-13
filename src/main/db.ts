@@ -114,6 +114,28 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE sessions ADD COLUMN championship TEXT;
   CREATE INDEX idx_sessions_championship ON sessions(championship);
+  `,
+  // v5: tarifas propias y partidas acordadas en cada sesión.
+  `
+  CREATE TABLE tariffs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT NOT NULL CHECK (category IN ('sesion', 'extra')),
+    session_type TEXT,
+    label TEXT NOT NULL,
+    price REAL NOT NULL DEFAULT 0,
+    unit TEXT,
+    notes TEXT,
+    position INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE TABLE session_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL,
+    description TEXT NOT NULL,
+    quantity REAL NOT NULL DEFAULT 1,
+    unit_price REAL NOT NULL DEFAULT 0
+  );
+  CREATE INDEX idx_session_items ON session_items(session_id);
   `
 ]
 

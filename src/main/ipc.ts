@@ -2,7 +2,7 @@ import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { copyFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { SQLInputValue } from 'node:sqlite'
-import type { ClientInput, Photo, PhotoPatch, SessionInput, SessionStatus } from '../shared/types'
+import type { ClientInput, Photo, PhotoPatch, SessionInput, SessionStatus, TariffInput } from '../shared/types'
 import { CLIENT_KINDS, PILOT_FIELDS, RACE_TYPE, SESSION_STATUSES, TEAM_FIELDS } from '../shared/types'
 import { transaction, type DB } from './db'
 import { registerGalleryIpc } from './gallery'
@@ -94,7 +94,12 @@ export function normalizeTags(tags: string[]): string[] {
 }
 
 export function registerIpc(db: DB, storage: LocalStorage): void {
-  const getSession = (id: number) => withTags(db.prepare(`${SESSION_SELECT} WHERE s.id = ?`).get(id))
+  const getSession = (id: number) => {
+    const row = db.prepare(`${SESSION_SELECT} WHERE s.id = ?`).get(id)
+    if (!row) return row
+    const items = db.prepare('SELECT id, description, quantity, unit_price FROM session_items WHERE session_id = ? ORDER BY position').all(id)
+    return { ...(withTags(row) as object), items }
+  }
 
   // ---------- Clientes ----------
   ipcMain.handle('clients:list', () => db.prepare(`${CLIENT_SELECT} ORDER BY c.name COLLATE NOCASE`).all())
@@ -123,7 +128,7 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
     if (filter.championship) { where.push('s.championship = ?'); params.push(filter.championship) }
     const sql = `${SESSION_SELECT} ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
                  ORDER BY s.date IS NULL, s.date DESC, s.id DESC`
-    return db.prepare(sql).all(...params).map((r) => withTags(r))
+    return db.prepare(sql).all(...params).map((r) => ({ ...(withTags(r) as object), items: [] }))
   })
   ipcMain.handle('sessions:get', (_e, id: number) => getSession(id) ?? null)
   ipcMain.handle('sessions:save', (_e, s: SessionInput) => {
@@ -152,6 +157,17 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
       db.prepare('DELETE FROM session_tags WHERE session_id = ?').run(id)
       const ins = db.prepare('INSERT INTO session_tags (session_id, tag) VALUES (?, ?)')
       for (const t of normalizeTags(s.tags ?? [])) ins.run(id, t)
+
+      db.prepare('DELETE FROM session_items WHERE session_id = ?').run(id)
+      const insItem = db.prepare('INSERT INTO session_items (session_id, position, description, quantity, unit_price) VALUES (?, ?, ?, ?, ?)')
+      ;(s.items ?? []).forEach((it, i) => {
+        const description = it.description?.trim()
+        if (!description) return
+        const quantity = Number(it.quantity)
+        const unitPrice = Number(it.unit_price)
+        if (!Number.isFinite(quantity) || !Number.isFinite(unitPrice)) throw new Error('Cantidad o precio no válidos en las partidas')
+        insItem.run(id!, i, description, quantity, unitPrice)
+      })
       return getSession(id)
     })
   })
@@ -231,6 +247,35 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
     const p = db.prepare('SELECT original_key FROM photos WHERE id = ?').get(id) as { original_key: string } | undefined
     if (p) shell.showItemInFolder(storage.resolve(p.original_key))
   })
+
+  // ---------- Tarifas ----------
+  ipcMain.handle('tariffs:list', () =>
+    db.prepare(`SELECT * FROM tariffs ORDER BY category, position, label COLLATE NOCASE`).all())
+  ipcMain.handle('tariffs:save', (_e, t: TariffInput) => {
+    if (!['sesion', 'extra'].includes(t.category)) throw new Error('Categoría de tarifa no válida')
+    if (!t.label?.trim()) throw new Error('La tarifa necesita un nombre')
+    const price = Number(t.price)
+    if (!Number.isFinite(price) || price < 0) throw new Error('Precio no válido')
+    const row = {
+      category: t.category,
+      session_type: t.category === 'sesion' ? nullIfEmpty(t.session_type) : null,
+      label: t.label.trim(),
+      price,
+      unit: nullIfEmpty(t.unit),
+      notes: nullIfEmpty(t.notes)
+    }
+    let id = t.id
+    if (id) {
+      db.prepare('UPDATE tariffs SET category=@category, session_type=@session_type, label=@label, price=@price, unit=@unit, notes=@notes WHERE id=@id')
+        .run({ ...row, id })
+    } else {
+      const next = Number((db.prepare('SELECT COALESCE(MAX(position), 0) + 1 AS n FROM tariffs WHERE category = ?').get(t.category) as { n: number }).n)
+      id = Number(db.prepare(`INSERT INTO tariffs (category, session_type, label, price, unit, notes, position)
+        VALUES (@category, @session_type, @label, @price, @unit, @notes, @position)`).run({ ...row, position: next }).lastInsertRowid)
+    }
+    return db.prepare('SELECT * FROM tariffs WHERE id = ?').get(id)
+  })
+  ipcMain.handle('tariffs:remove', (_e, id: number) => { db.prepare('DELETE FROM tariffs WHERE id = ?').run(id) })
 
   // ---------- Etiquetas y búsqueda ----------
   ipcMain.handle('tags', () =>
