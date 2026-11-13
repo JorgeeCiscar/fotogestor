@@ -22,7 +22,7 @@ function createWindow(): void {
     minWidth: 960,
     minHeight: 600,
     title: 'FotoGestor',
-    backgroundColor: '#16171b',
+    backgroundColor: '#1d1d1d',
     show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

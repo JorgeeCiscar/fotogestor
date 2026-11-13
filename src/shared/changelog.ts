@@ -14,6 +14,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.0',
+    date: '2026-11-13',
+    title: 'Nuevo aspecto',
+    changes: [
+      'Interfaz con la paleta de grises neutros de Lightroom y un único acento azul.',
+      'Bordes y esquinas más sobrios, y textos más legibles sobre el fondo oscuro.',
+      'Los apartados, los botones y los atajos siguen exactamente donde estaban.'
+    ]
+  },
+  {
     version: '0.6.0',
     date: '2026-11-13',
     title: 'Carreras y aviso de novedades',
