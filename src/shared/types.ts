@@ -66,6 +66,10 @@ export interface Session {
   status: SessionStatus
   /** Solo en las sesiones de tipo «Carrera». */
   championship: string | null
+  circuit_id: number | null
+  circuit_name?: string | null
+  organizer_id: number | null
+  organizer_name?: string | null
   price: number | null
   notes: string | null
   created_at: string
@@ -78,8 +82,45 @@ export interface Session {
 }
 export type SessionInput = Omit<
   Session,
-  'id' | 'created_at' | 'client_name' | 'photo_count' | 'pick_count' | 'client_pick_count' | 'cover_key'
+  'id' | 'created_at' | 'client_name' | 'photo_count' | 'pick_count' | 'client_pick_count' | 'cover_key' | 'circuit_name' | 'organizer_name'
 > & { id?: number }
+
+export type ContactKind = 'circuito' | 'organizador'
+export const CONTACT_KINDS: ContactKind[] = ['circuito', 'organizador']
+
+/** Circuito u organizador: agenda propia, separada de los clientes. */
+export interface Contact {
+  id: number
+  kind: ContactKind
+  name: string
+  locality: string | null
+  address: string | null
+  website: string | null
+  instagram: string | null
+  email: string | null
+  phone: string | null
+  contact_name: string | null
+  contact_role: string | null
+  // Acreditaciones
+  accred_name: string | null
+  accred_email: string | null
+  accred_phone: string | null
+  accred_deadline: string | null
+  accred_notes: string | null
+  // Acceso y logística
+  access_gate: string | null
+  parking: string | null
+  hours: string | null
+  wifi: string | null
+  track_notes: string | null
+  // Facturación
+  tax_id: string | null
+  tax_address: string | null
+  notes: string | null
+  created_at: string
+  session_count?: number
+}
+export type ContactInput = Omit<Contact, 'id' | 'created_at' | 'session_count'> & { id?: number }
 
 export type TariffCategory = 'sesion' | 'extra'
 /** 'fijo': `price` son euros. 'porcentaje': `price` es un % sobre el total de la sesión. */
@@ -158,6 +199,7 @@ export interface DashboardStats {
 
 export interface SearchResults {
   clients: Client[]
+  contacts: Contact[]
   sessions: Session[]
   photos: (Photo & { session_title: string })[]
 }
@@ -276,6 +318,12 @@ export interface Api {
     copyTo(ids: number[], opts: CopyOptions): Promise<{ copied: number; folder: string } | null>
     startDrag(ids: number[]): void
     onCopyProgress(cb: (p: CopyProgress) => void): () => void
+  }
+  contacts: {
+    list(kind?: ContactKind): Promise<Contact[]>
+    get(id: number): Promise<Contact | null>
+    save(c: ContactInput): Promise<Contact>
+    remove(id: number): Promise<void>
   }
   tariffs: {
     list(): Promise<Tariff[]>

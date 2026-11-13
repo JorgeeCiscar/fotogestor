@@ -14,6 +14,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.12.0',
+    date: '2026-11-13',
+    title: 'Contactos: circuitos y organizadores',
+    changes: [
+      'Nuevo apartado «Contactos» con fichas de circuito y de organizador, aparte de tus clientes.',
+      'Guarda acreditaciones (prensa, email, plazo, requisitos), acceso y logística (puerta, parking, horarios, wifi, notas de la pista), contacto general y datos de facturación.',
+      'Al escribir el nombre del circuito en el «Lugar» de una sesión se enlaza solo: desde la carrera llegas a sus datos de un clic.',
+      'Cada ficha lista las carreras que has hecho allí, y la búsqueda global también los encuentra.'
+    ]
+  },
+  {
     version: '0.11.0',
     date: '2026-11-13',
     title: 'Tus precios ya cargados',

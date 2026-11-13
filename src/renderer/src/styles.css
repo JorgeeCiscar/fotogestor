@@ -325,3 +325,6 @@ label.check input { width: auto; margin: 0; accent-color: var(--accent); }
   display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 24px; max-width: 760px; }
 .tariff-starter p { margin: 0; }
 .tariffs select { min-width: 110px; }
+.kind-picker.two { grid-template-columns: repeat(2, 1fr); }
+.kind-circuito { background: #33383e; color: #c6d2dc; }
+.kind-organizador { background: #3a3630; color: #ddd0bb; }

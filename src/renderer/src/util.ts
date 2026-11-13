@@ -59,3 +59,6 @@ export function itemsTotal(items: { quantity: number; unit_price: number }[]): n
   const n = items.reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.unit_price) || 0), 0)
   return Math.round((n + Number.EPSILON) * 100) / 100
 }
+
+export const CONTACT_KIND_LABEL: Record<string, string> = { circuito: 'Circuito', organizador: 'Organizador' }
+export const CONTACT_KIND_ICON: Record<string, string> = { circuito: '🏁', organizador: '🏆' }

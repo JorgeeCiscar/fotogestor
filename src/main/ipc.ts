@@ -5,6 +5,7 @@ import type { SQLInputValue } from 'node:sqlite'
 import type { ClientInput, Photo, PhotoPatch, SessionInput, SessionStatus, TariffInput, TariffMode } from '../shared/types'
 import { CLIENT_KINDS, PILOT_FIELDS, RACE_TYPE, SESSION_STATUSES, TEAM_FIELDS } from '../shared/types'
 import { transaction, type DB } from './db'
+import { CONTACT_SELECT, registerContactsIpc, findCircuitByName } from './contacts'
 import { registerGalleryIpc } from './gallery'
 import { collectFiles, importPhotos, SUPPORTED_EXT } from './importer'
 import { registerInvoiceIpc } from './invoices'
@@ -21,7 +22,9 @@ export const SESSION_SELECT = `
     (SELECT COUNT(*) FROM photos p WHERE p.session_id = s.id AND p.client_pick = 1) AS client_pick_count,
     (SELECT p.thumb_key FROM photos p WHERE p.session_id = s.id
        ORDER BY (p.flag = 'pick') DESC, p.rating DESC, p.id LIMIT 1) AS cover_key,
-    (SELECT group_concat(t.tag, char(31)) FROM session_tags t WHERE t.session_id = s.id) AS tags_raw
+    (SELECT group_concat(t.tag, char(31)) FROM session_tags t WHERE t.session_id = s.id) AS tags_raw,
+    (SELECT n.name FROM contacts n WHERE n.id = s.circuit_id) AS circuit_name,
+    (SELECT n.name FROM contacts n WHERE n.id = s.organizer_id) AS organizer_name
   FROM sessions s LEFT JOIN clients c ON c.id = s.client_id`
 
 export const PHOTO_SELECT = `
@@ -142,6 +145,9 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
       location: nullIfEmpty(s.location),
       status: s.status,
       championship: s.type === RACE_TYPE ? nullIfEmpty(s.championship) : null,
+      // El circuito se enlaza por el nombre escrito en «Lugar».
+      circuit_id: findCircuitByName(db, s.location),
+      organizer_id: s.organizer_id || null,
       price: s.price === null || s.price === undefined || Number.isNaN(s.price) ? null : Number(s.price),
       notes: nullIfEmpty(s.notes)
     }
@@ -149,10 +155,11 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
       let id = s.id
       if (id) {
         db.prepare(`UPDATE sessions SET client_id=@client_id, title=@title, type=@type, date=@date, location=@location,
-                    status=@status, championship=@championship, price=@price, notes=@notes WHERE id=@id`).run({ ...row, id })
+                    status=@status, championship=@championship, circuit_id=@circuit_id, organizer_id=@organizer_id,
+                    price=@price, notes=@notes WHERE id=@id`).run({ ...row, id })
       } else {
-        id = Number(db.prepare(`INSERT INTO sessions (client_id, title, type, date, location, status, championship, price, notes)
-                    VALUES (@client_id, @title, @type, @date, @location, @status, @championship, @price, @notes)`).run(row).lastInsertRowid)
+        id = Number(db.prepare(`INSERT INTO sessions (client_id, title, type, date, location, status, championship, circuit_id, organizer_id, price, notes)
+                    VALUES (@client_id, @title, @type, @date, @location, @status, @championship, @circuit_id, @organizer_id, @price, @notes)`).run(row).lastInsertRowid)
       }
       db.prepare('DELETE FROM session_tags WHERE session_id = ?').run(id)
       const ins = db.prepare('INSERT INTO session_tags (session_id, tag) VALUES (?, ?)')
@@ -288,7 +295,7 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
   )
   ipcMain.handle('search', (_e, q: string) => {
     const term = q.trim()
-    if (!term) return { clients: [], sessions: [], photos: [] }
+    if (!term) return { clients: [], contacts: [], sessions: [], photos: [] }
     const p = like(term)
     const clients = db.prepare(`${CLIENT_SELECT}
       WHERE c.name LIKE ?1 ESCAPE '\\' OR c.email LIKE ?1 ESCAPE '\\' OR c.phone LIKE ?1 ESCAPE '\\'
@@ -309,7 +316,11 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
       WHERE p.file_name LIKE ?1 ESCAPE '\\' OR p.camera LIKE ?1 ESCAPE '\\' OR p.lens LIKE ?1 ESCAPE '\\'
         OR EXISTS (SELECT 1 FROM photo_tags t WHERE t.photo_id = p.id AND t.tag LIKE ?1 ESCAPE '\\')
       ORDER BY p.rating DESC, p.id DESC LIMIT 120`).all(p).map((r) => withTags(r))
-    return { clients, sessions, photos }
+    const contacts = db.prepare(`${CONTACT_SELECT}
+      WHERE c.name LIKE ?1 ESCAPE '\\' OR c.locality LIKE ?1 ESCAPE '\\' OR c.contact_name LIKE ?1 ESCAPE '\\'
+        OR c.accred_name LIKE ?1 ESCAPE '\\' OR c.email LIKE ?1 ESCAPE '\\' OR c.notes LIKE ?1 ESCAPE '\\'
+      ORDER BY c.name COLLATE NOCASE LIMIT 20`).all(p)
+    return { clients, contacts, sessions, photos }
   })
 
   // ---------- Panel ----------
@@ -334,4 +345,5 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
   registerInvoiceIpc(db)
   registerGalleryIpc(db, storage)
   registerLibraryIpc(db, storage)
+  registerContactsIpc(db)
 }

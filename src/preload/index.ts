@@ -31,6 +31,7 @@ const api: Api = {
     startDrag: (ids: number[]) => ipcRenderer.send('library:startDrag', ids),
     onCopyProgress: (cb) => subscribe('library:copy-progress', cb)
   },
+  contacts: { list: invoke('contacts:list'), get: invoke('contacts:get'), save: invoke('contacts:save'), remove: invoke('contacts:remove') },
   tariffs: { list: invoke('tariffs:list'), save: invoke('tariffs:save'), remove: invoke('tariffs:remove') },
   tags: invoke('tags'),
   championships: invoke('championships'),

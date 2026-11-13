@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { SearchResults } from '../../../shared/types'
 import type { View } from '../App'
-import { api } from '../util'
+import { api, CONTACT_KIND_ICON, CONTACT_KIND_LABEL } from '../util'
 import SessionCard from './SessionCard'
 
 export default function SearchView({ nav, initial = '' }: { nav: (v: View) => void; initial?: string }) {
@@ -15,7 +15,7 @@ export default function SearchView({ nav, initial = '' }: { nav: (v: View) => vo
     return () => clearTimeout(t)
   }, [q])
 
-  const empty = res && !res.clients.length && !res.sessions.length && !res.photos.length
+  const empty = res && !res.clients.length && !res.contacts.length && !res.sessions.length && !res.photos.length
 
   return (
     <div className="page">
@@ -37,6 +37,21 @@ export default function SearchView({ nav, initial = '' }: { nav: (v: View) => vo
               <button key={c.id} className="result" onClick={() => nav({ name: 'client', id: c.id })}>
                 <strong>{c.name}</strong>
                 <span className="muted small">{[c.email, c.phone].filter(Boolean).join(' · ')} · {c.session_count ?? 0} sesiones</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {res && res.contacts.length > 0 && (
+        <>
+          <h2>Circuitos y organizadores ({res.contacts.length})</h2>
+          <div className="result-list">
+            {res.contacts.map((c) => (
+              <button key={c.id} className="result" onClick={() => nav({ name: 'contact', id: c.id })}>
+                <strong>{CONTACT_KIND_ICON[c.kind]} {c.name}</strong>
+                <span className="muted small">
+                  {[CONTACT_KIND_LABEL[c.kind], c.locality, c.accred_email ?? c.email, c.phone].filter(Boolean).join(' · ')}
+                </span>
               </button>
             ))}
           </div>

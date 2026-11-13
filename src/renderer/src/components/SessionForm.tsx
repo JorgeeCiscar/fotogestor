@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react'
-import type { Client, Session, SessionInput, SessionItem, Tariff } from '../../../shared/types'
+import type { Client, Contact, Session, SessionInput, SessionItem, Tariff } from '../../../shared/types'
 import { RACE_TYPE, SESSION_STATUSES } from '../../../shared/types'
 import { api, errorMessage, formatMoney, itemsTotal, SESSION_TYPES, STATUS_LABEL } from '../util'
 import Modal from './Modal'
@@ -25,15 +25,18 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
     notes: session?.notes ?? '',
     championship: session?.championship ?? '',
     tags: session?.tags ?? [],
-    items: session?.items ?? []
+    items: session?.items ?? [],
+    circuit_id: session?.circuit_id ?? null,
+    organizer_id: session?.organizer_id ?? null
   })
+  const [contacts, setContacts] = useState<Contact[]>([])
   const [tariffs, setTariffs] = useState<Tariff[]>([])
   // El precio sigue al total de las partidas mientras el usuario no lo escriba a mano.
   const [priceTouched, setPriceTouched] = useState(session ? session.price !== null : false)
   const [championships, setChampionships] = useState<string[]>([])
   const [error, setError] = useState('')
   const [pasting, setPasting] = useState(false)
-  useEffect(() => { api.clients.list().then(setClients); api.championships().then(setChampionships); api.tariffs.list().then(setTariffs) }, [])
+  useEffect(() => { api.clients.list().then(setClients); api.championships().then(setChampionships); api.tariffs.list().then(setTariffs); api.contacts.list().then(setContacts) }, [])
   const set = (k: keyof SessionInput) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value })
 
   /** Vuelca en el formulario los datos reconocidos en el texto pegado. */
@@ -133,8 +136,21 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
         )}
         <div className="row">
           <label>Fecha<input type="date" value={form.date ?? ''} onChange={set('date')} /></label>
-          <label>Lugar<input value={form.location ?? ''} onChange={set('location')} /></label>
+          <label>Lugar
+            <input list="circuit-names" value={form.location ?? ''} onChange={set('location')} placeholder="Circuit Ricardo Tormo" />
+            <datalist id="circuit-names">
+              {contacts.filter((c) => c.kind === 'circuito').map((c) => <option key={c.id} value={c.name} />)}
+            </datalist>
+          </label>
         </div>
+        {contacts.some((c) => c.kind === 'organizador') && (
+          <label>Organizador
+            <select value={form.organizer_id ?? ''} onChange={(e) => setForm({ ...form, organizer_id: e.target.value ? Number(e.target.value) : null })}>
+              <option value="">— Ninguno —</option>
+              {contacts.filter((c) => c.kind === 'organizador').map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+        )}
         <div className="row">
           <label>Estado
             <select value={form.status} onChange={set('status')}>

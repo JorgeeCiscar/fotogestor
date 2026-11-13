@@ -140,6 +140,39 @@ export const MIGRATIONS: string[] = [
   // v6: tarifas en porcentaje (licencia comercial, descuentos, cancelaciones).
   `
   ALTER TABLE tariffs ADD COLUMN mode TEXT NOT NULL DEFAULT 'fijo';
+  `,
+  // v7: agenda de circuitos y organizadores, enlazada con las sesiones.
+  `
+  CREATE TABLE contacts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL CHECK (kind IN ('circuito', 'organizador')),
+    name TEXT NOT NULL,
+    locality TEXT,
+    address TEXT,
+    website TEXT,
+    instagram TEXT,
+    email TEXT,
+    phone TEXT,
+    contact_name TEXT,
+    contact_role TEXT,
+    accred_name TEXT,
+    accred_email TEXT,
+    accred_phone TEXT,
+    accred_deadline TEXT,
+    accred_notes TEXT,
+    access_gate TEXT,
+    parking TEXT,
+    hours TEXT,
+    wifi TEXT,
+    track_notes TEXT,
+    tax_id TEXT,
+    tax_address TEXT,
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX idx_contacts_kind ON contacts(kind);
+  ALTER TABLE sessions ADD COLUMN circuit_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL;
+  ALTER TABLE sessions ADD COLUMN organizer_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL;
   `
 ]
 

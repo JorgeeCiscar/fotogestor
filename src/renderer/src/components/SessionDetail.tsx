@@ -194,7 +194,21 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
                 {' · '}
               </>
             )}
-            {[session.type, session.championship, formatDate(session.date), session.location].filter(Boolean).join(' · ')}
+            {[session.type, session.championship, formatDate(session.date)].filter(Boolean).join(' · ')}
+            {session.location && (
+              <>
+                {' · '}
+                {session.circuit_id
+                  ? <button className="link" onClick={() => nav({ name: 'contact', id: session.circuit_id! })}>{session.location}</button>
+                  : session.location}
+              </>
+            )}
+            {session.organizer_id && session.organizer_name && (
+              <>
+                {' · '}
+                <button className="link" onClick={() => nav({ name: 'contact', id: session.organizer_id! })}>{session.organizer_name}</button>
+              </>
+            )}
             {session.price !== null && ` · ${formatMoney(session.price)}`}
             {session.tags.map((t) => <span key={t} className="chip small-chip">{t}</span>)}
           </span>

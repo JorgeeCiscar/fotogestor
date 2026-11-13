@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import Dashboard from './components/Dashboard'
 import ClientsView from './components/ClientsView'
 import ClientDetail from './components/ClientDetail'
+import ContactsView from './components/ContactsView'
+import ContactDetail from './components/ContactDetail'
 import SessionsView from './components/SessionsView'
 import SessionDetail from './components/SessionDetail'
 import LibraryView from './components/LibraryView'
@@ -16,6 +18,8 @@ export type View =
   | { name: 'dashboard' }
   | { name: 'clients' }
   | { name: 'client'; id: number }
+  | { name: 'contacts' }
+  | { name: 'contact'; id: number }
   | { name: 'sessions'; clientId?: number; create?: boolean }
   | { name: 'library'; clientId?: number }
   | { name: 'session'; id: number; photoId?: number }
@@ -29,6 +33,7 @@ const NAV: [View['name'], string][] = [
   ['sessions', 'Sesiones'],
   ['library', 'Fotos'],
   ['clients', 'Clientes'],
+  ['contacts', 'Contactos'],
   ['invoices', 'Facturación'],
   ['tariffs', 'Tarifas'],
   ['search', 'Buscar'],
@@ -38,7 +43,8 @@ const NAV: [View['name'], string][] = [
 export default function App() {
   const [view, setView] = useState<View>({ name: 'dashboard' })
   const nav = (v: View) => setView(v)
-  const active = view.name === 'session' ? 'sessions' : view.name === 'client' ? 'clients' : view.name
+  const active = view.name === 'session' ? 'sessions' : view.name === 'client' ? 'clients'
+    : view.name === 'contact' ? 'contacts' : view.name
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -68,6 +74,8 @@ export default function App() {
         {view.name === 'dashboard' && <Dashboard nav={nav} />}
         {view.name === 'clients' && <ClientsView nav={nav} />}
         {view.name === 'client' && <ClientDetail key={view.id} id={view.id} nav={nav} />}
+        {view.name === 'contacts' && <ContactsView nav={nav} />}
+        {view.name === 'contact' && <ContactDetail key={view.id} id={view.id} nav={nav} />}
         {view.name === 'sessions' && <SessionsView nav={nav} clientId={view.clientId} create={view.create} />}
         {view.name === 'library' && <LibraryView key={view.clientId ?? 0} nav={nav} clientId={view.clientId} />}
         {view.name === 'session' && <SessionDetail key={view.id} id={view.id} photoId={view.photoId} nav={nav} />}
