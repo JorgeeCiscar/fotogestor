@@ -32,6 +32,7 @@ const api: Api = {
     onCopyProgress: (cb) => subscribe('library:copy-progress', cb)
   },
   tags: invoke('tags'),
+  championships: invoke('championships'),
   search: invoke('search'),
   gallery: {
     export: invoke('gallery:export'),
@@ -53,7 +54,9 @@ const api: Api = {
     updateStatus: invoke('update:status'),
     checkForUpdates: invoke('update:check'),
     installUpdate: invoke('update:install'),
-    onUpdateStatus: (cb) => subscribe('update:status', cb)
+    onUpdateStatus: (cb) => subscribe('update:status', cb),
+    whatsNew: invoke('app:whatsNew'),
+    whatsNewSeen: invoke('app:whatsNewSeen')
   },
   mediaUrl: (key) => `foto://media/${encodeURIComponent(key)}`
 } as Api

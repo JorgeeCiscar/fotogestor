@@ -3,7 +3,7 @@ import { copyFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { SQLInputValue } from 'node:sqlite'
 import type { ClientInput, Photo, PhotoPatch, SessionInput, SessionStatus } from '../shared/types'
-import { CLIENT_KINDS, PILOT_FIELDS, SESSION_STATUSES, TEAM_FIELDS } from '../shared/types'
+import { CLIENT_KINDS, PILOT_FIELDS, RACE_TYPE, SESSION_STATUSES, TEAM_FIELDS } from '../shared/types'
 import { transaction, type DB } from './db'
 import { registerGalleryIpc } from './gallery'
 import { collectFiles, importPhotos, SUPPORTED_EXT } from './importer'
@@ -104,11 +104,16 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
   })
 
   // ---------- Sesiones ----------
-  ipcMain.handle('sessions:list', (_e, filter: { clientId?: number; status?: SessionStatus } = {}) => {
+  ipcMain.handle('championships', () =>
+    db.prepare("SELECT DISTINCT championship FROM sessions WHERE championship IS NOT NULL AND championship <> '' ORDER BY championship COLLATE NOCASE")
+      .all().map((r) => String(r.championship)))
+
+  ipcMain.handle('sessions:list', (_e, filter: { clientId?: number; status?: SessionStatus; championship?: string } = {}) => {
     const where: string[] = []
     const params: SQLInputValue[] = []
     if (filter.clientId) { where.push('s.client_id = ?'); params.push(filter.clientId) }
     if (filter.status) { where.push('s.status = ?'); params.push(filter.status) }
+    if (filter.championship) { where.push('s.championship = ?'); params.push(filter.championship) }
     const sql = `${SESSION_SELECT} ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
                  ORDER BY s.date IS NULL, s.date DESC, s.id DESC`
     return db.prepare(sql).all(...params).map((r) => withTags(r))
@@ -124,6 +129,7 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
       date: nullIfEmpty(s.date),
       location: nullIfEmpty(s.location),
       status: s.status,
+      championship: s.type === RACE_TYPE ? nullIfEmpty(s.championship) : null,
       price: s.price === null || s.price === undefined || Number.isNaN(s.price) ? null : Number(s.price),
       notes: nullIfEmpty(s.notes)
     }
@@ -131,10 +137,10 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
       let id = s.id
       if (id) {
         db.prepare(`UPDATE sessions SET client_id=@client_id, title=@title, type=@type, date=@date, location=@location,
-                    status=@status, price=@price, notes=@notes WHERE id=@id`).run({ ...row, id })
+                    status=@status, championship=@championship, price=@price, notes=@notes WHERE id=@id`).run({ ...row, id })
       } else {
-        id = Number(db.prepare(`INSERT INTO sessions (client_id, title, type, date, location, status, price, notes)
-                    VALUES (@client_id, @title, @type, @date, @location, @status, @price, @notes)`).run(row).lastInsertRowid)
+        id = Number(db.prepare(`INSERT INTO sessions (client_id, title, type, date, location, status, championship, price, notes)
+                    VALUES (@client_id, @title, @type, @date, @location, @status, @championship, @price, @notes)`).run(row).lastInsertRowid)
       }
       db.prepare('DELETE FROM session_tags WHERE session_id = ?').run(id)
       const ins = db.prepare('INSERT INTO session_tags (session_id, tag) VALUES (?, ?)')
@@ -237,6 +243,7 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
       ORDER BY c.name COLLATE NOCASE LIMIT 30`).all(p, term.replace(/^#/, ''))
     const sessions = db.prepare(`${SESSION_SELECT}
       WHERE s.title LIKE ?1 ESCAPE '\\' OR s.location LIKE ?1 ESCAPE '\\' OR s.type LIKE ?1 ESCAPE '\\' OR s.notes LIKE ?1 ESCAPE '\\'
+        OR s.championship LIKE ?1 ESCAPE '\\'
         OR c.name LIKE ?1 ESCAPE '\\' OR EXISTS (SELECT 1 FROM session_tags t WHERE t.session_id = s.id AND t.tag LIKE ?1 ESCAPE '\\')
       ORDER BY s.date DESC LIMIT 30`).all(p).map((r) => withTags(r))
     const photos = db.prepare(`

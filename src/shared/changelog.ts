@@ -1,0 +1,64 @@
+/**
+ * Novedades de cada versión. Al abrir la app después de actualizarse se muestran
+ * las entradas más nuevas que la última versión vista.
+ *
+ * Al publicar una versión nueva, añade su entrada ARRIBA con la misma versión
+ * que `package.json`.
+ */
+export interface ChangelogEntry {
+  version: string
+  date: string
+  title: string
+  changes: string[]
+}
+
+export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.6.0',
+    date: '2026-11-13',
+    title: 'Carreras y aviso de novedades',
+    changes: [
+      'Nuevo tipo de sesión «Carrera»: al elegirlo puedes indicar el campeonato.',
+      'Las sesiones se pueden filtrar por campeonato, que también aparece en la búsqueda.',
+      'Al actualizarse la app, esta ventana te cuenta las novedades de la versión.'
+    ]
+  },
+  {
+    version: '0.5.0',
+    date: '2026-11-06',
+    title: 'Pilotos, equipos y particulares',
+    changes: [
+      'Al crear un cliente se elige si es piloto, equipo o particular, cada uno con sus datos.',
+      'Pilotos: dorsal, categoría, moto o coche, equipo, licencia y datos del tutor si es menor.',
+      'Equipos: persona de contacto, cargo, marca, web y lista de sus pilotos.',
+      'La lista de clientes tiene pestañas por tipo y busca por dorsal, equipo o categoría.'
+    ]
+  },
+  {
+    version: '0.4.0',
+    date: '2026-11-06',
+    title: 'Fototeca',
+    changes: [
+      'Nuevo apartado «Fotos» con todas las fotos de todas las sesiones.',
+      'Filtros por una o varias sesiones, cliente, marca, valoración, etiqueta y RAW.',
+      'Selección múltiple y copia a una carpeta, con la opción de una subcarpeta por sesión.'
+    ]
+  }
+]
+
+/** Entradas más nuevas que `since` (todas si no hay versión anterior conocida). */
+export function changesSince(since: string | null, upTo: string): ChangelogEntry[] {
+  const entries = CHANGELOG.filter((e) => compareVersions(e.version, upTo) <= 0)
+  if (!since) return entries
+  return entries.filter((e) => compareVersions(e.version, since) > 0)
+}
+
+/** Compara versiones «1.2.3»: negativo si a < b, 0 si iguales, positivo si a > b. */
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split('.').map((n) => parseInt(n, 10) || 0)
+  const pb = b.split('.').map((n) => parseInt(n, 10) || 0)
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) - (pb[i] ?? 0)
+  }
+  return 0
+}

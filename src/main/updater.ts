@@ -1,6 +1,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import electronUpdater from 'electron-updater'
+import { changesSince, compareVersions } from '../shared/changelog'
 import type { UpdateStatus } from '../shared/types'
+import type { DB } from './db'
 
 const { autoUpdater } = electronUpdater
 const CHECK_EVERY_MS = 4 * 60 * 60 * 1000 // cada 4 horas
@@ -16,7 +18,8 @@ function broadcast(s: UpdateStatus): void {
  * Actualizaciones automáticas desde GitHub Releases: se descargan en segundo plano
  * y se instalan al cerrar la app (o al pulsar «Reiniciar y actualizar»).
  */
-export function setupUpdater(): void {
+export function setupUpdater(db: DB): void {
+  registerWhatsNew(db)
   ipcMain.handle('app:version', () => app.getVersion())
   ipcMain.handle('update:status', () => status)
   ipcMain.handle('update:check', () => check(true))
@@ -41,6 +44,38 @@ export function setupUpdater(): void {
 
   setTimeout(() => check(false), 10_000)
   setInterval(() => check(false), CHECK_EVERY_MS)
+}
+
+const LAST_SEEN_KEY = 'last_seen_version'
+
+/**
+ * Novedades tras actualizar: se comparan la versión actual y la última vista.
+ * En una instalación nueva (base de datos vacía) no se muestra nada.
+ */
+function registerWhatsNew(db: DB): void {
+  const read = () => {
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(LAST_SEEN_KEY) as { value: string } | undefined
+    return row?.value || null
+  }
+  const write = (v: string) =>
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(LAST_SEEN_KEY, v)
+
+  ipcMain.handle('app:whatsNew', () => {
+    const version = app.getVersion()
+    const seen = read()
+    if (seen && compareVersions(seen, version) >= 0) return null
+    if (!seen) {
+      // Sin versión guardada: o es una instalación nueva (no se muestra nada),
+      // o viene de una versión anterior a este aviso (se muestran las novedades).
+      const used = Number((db.prepare('SELECT (SELECT COUNT(*) FROM sessions) + (SELECT COUNT(*) FROM clients) AS n').get() as { n: number }).n)
+      if (!used) { write(version); return null }
+    }
+    const entries = changesSince(seen, version)
+    if (!entries.length) { write(version); return null }
+    return { version, entries }
+  })
+
+  ipcMain.handle('app:whatsNewSeen', () => { write(app.getVersion()) })
 }
 
 async function check(manual: boolean): Promise<UpdateStatus> {

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import type { Client, Session, SessionInput } from '../../../shared/types'
-import { SESSION_STATUSES } from '../../../shared/types'
+import { RACE_TYPE, SESSION_STATUSES } from '../../../shared/types'
 import { api, errorMessage, SESSION_TYPES, STATUS_LABEL } from '../util'
 import Modal from './Modal'
 import TagInput from './TagInput'
@@ -22,10 +22,12 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
     status: session?.status ?? 'planificada',
     price: session?.price ?? null,
     notes: session?.notes ?? '',
+    championship: session?.championship ?? '',
     tags: session?.tags ?? []
   })
+  const [championships, setChampionships] = useState<string[]>([])
   const [error, setError] = useState('')
-  useEffect(() => { api.clients.list().then(setClients) }, [])
+  useEffect(() => { api.clients.list().then(setClients); api.championships().then(setChampionships) }, [])
   const set = (k: keyof SessionInput) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value })
 
   async function submit(e: FormEvent) {
@@ -55,6 +57,14 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
             </select>
           </label>
         </div>
+        {form.type === RACE_TYPE && (
+          <label className="race-field">Campeonato
+            <input list="championships" value={form.championship ?? ''} onChange={set('championship')}
+              placeholder="Ej.: Campeonato de España de Velocidad (ESBK)" />
+            <datalist id="championships">{championships.map((c) => <option key={c} value={c} />)}</datalist>
+            <span className="muted small hint">Se guarda como etiqueta de la carrera: podrás filtrar y buscar por campeonato.</span>
+          </label>
+        )}
         <div className="row">
           <label>Fecha<input type="date" value={form.date ?? ''} onChange={set('date')} /></label>
           <label>Lugar<input value={form.location ?? ''} onChange={set('location')} /></label>

@@ -9,7 +9,7 @@ export const STATUS_LABEL: Record<SessionStatus, string> = {
   entregada: 'Entregada'
 }
 
-export const SESSION_TYPES = ['Boda', 'Retrato', 'Familia', 'Newborn', 'Comunión', 'Evento', 'Producto', 'Corporativo', 'Otro']
+export const SESSION_TYPES = ['Carrera', 'Entrenamientos', 'Track day', 'Boda', 'Retrato', 'Familia', 'Newborn', 'Comunión', 'Evento', 'Producto', 'Corporativo', 'Otro']
 
 export function formatDate(d: string | null): string {
   if (!d) return 'Sin fecha'

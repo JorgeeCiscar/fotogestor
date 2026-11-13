@@ -249,3 +249,12 @@ label.check input { width: auto; margin: 0; accent-color: var(--accent); }
 .kind-particular { background: #2b2d33; color: #c9ccd3; }
 .dorsal { display: inline-block; min-width: 26px; text-align: center; background: var(--text); color: var(--bg); font-weight: 800;
   border-radius: 4px; padding: 0 5px; margin-right: 8px; font-size: 12px; }
+
+/* ---------- Novedades y carreras ---------- */
+.whats-new section { margin-bottom: 14px; }
+.whats-new h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+.whats-new ul { margin: 0; padding-left: 18px; color: var(--text); line-height: 1.6; }
+.whats-new li { margin-bottom: 3px; }
+.whats-new footer { display: flex; justify-content: flex-end; margin-top: 18px; }
+.championship { background: #3b2a22; color: #f3c3a6; align-self: flex-start; margin-left: 0; }
+.race-field input { border-color: var(--accent); }

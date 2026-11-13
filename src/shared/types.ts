@@ -1,3 +1,6 @@
+export const RACE_TYPE = 'Carrera'
+import type { ChangelogEntry } from './changelog'
+
 export type SessionStatus = 'planificada' | 'realizada' | 'editando' | 'entregada'
 export const SESSION_STATUSES: SessionStatus[] = ['planificada', 'realizada', 'editando', 'entregada']
 
@@ -56,6 +59,8 @@ export interface Session {
   date: string | null
   location: string | null
   status: SessionStatus
+  /** Solo en las sesiones de tipo «Carrera». */
+  championship: string | null
   price: number | null
   notes: string | null
   created_at: string
@@ -217,7 +222,7 @@ export interface Api {
     remove(id: number): Promise<void>
   }
   sessions: {
-    list(filter?: { clientId?: number; status?: SessionStatus }): Promise<Session[]>
+    list(filter?: { clientId?: number; status?: SessionStatus; championship?: string }): Promise<Session[]>
     get(id: number): Promise<Session | null>
     save(s: SessionInput): Promise<Session>
     remove(id: number): Promise<void>
@@ -241,6 +246,7 @@ export interface Api {
     onCopyProgress(cb: (p: CopyProgress) => void): () => void
   }
   tags(): Promise<string[]>
+  championships(): Promise<string[]>
   search(q: string): Promise<SearchResults>
   gallery: {
     export(sessionId: number, opts: GalleryExportOptions): Promise<{ file: string; count: number } | null>
@@ -267,6 +273,9 @@ export interface Api {
     checkForUpdates(): Promise<UpdateStatus>
     installUpdate(): Promise<void>
     onUpdateStatus(cb: (s: UpdateStatus) => void): () => void
+    /** Novedades pendientes de ver tras actualizarse (null si no hay). */
+    whatsNew(): Promise<{ version: string; entries: ChangelogEntry[] } | null>
+    whatsNewSeen(): Promise<void>
   }
   mediaUrl(key: string): string
 }

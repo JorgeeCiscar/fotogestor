@@ -188,7 +188,7 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
         <div className="session-title">
           <h1>{session.title} <span className={`badge status-${session.status}`}>{STATUS_LABEL[session.status]}</span></h1>
           <span className="muted">
-            {[session.client_name, session.type, formatDate(session.date), session.location].filter(Boolean).join(' · ')}
+            {[session.client_name, session.type, session.championship, formatDate(session.date), session.location].filter(Boolean).join(' · ')}
             {session.price !== null && ` · ${formatMoney(session.price)}`}
             {session.tags.map((t) => <span key={t} className="chip small-chip">{t}</span>)}
           </span>

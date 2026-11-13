@@ -11,12 +11,14 @@ export default function SessionsView({ nav, clientId }: { nav: (v: View) => void
   const [clients, setClients] = useState<Client[]>([])
   const [status, setStatus] = useState<SessionStatus | ''>('')
   const [client, setClient] = useState<number | ''>(clientId ?? '')
+  const [championship, setChampionship] = useState('')
+  const [championships, setChampionships] = useState<string[]>([])
   const [creating, setCreating] = useState(false)
 
-  useEffect(() => { api.clients.list().then(setClients) }, [])
+  useEffect(() => { api.clients.list().then(setClients); api.championships().then(setChampionships) }, [])
   useEffect(() => {
-    api.sessions.list({ clientId: client || undefined, status: status || undefined }).then(setSessions)
-  }, [status, client])
+    api.sessions.list({ clientId: client || undefined, status: status || undefined, championship: championship || undefined }).then(setSessions)
+  }, [status, client, championship])
 
   return (
     <div className="page">
@@ -30,6 +32,12 @@ export default function SessionsView({ nav, clientId }: { nav: (v: View) => void
           <option value="">Todos los estados</option>
           {SESSION_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
         </select>
+        {championships.length > 0 && (
+          <select value={championship} onChange={(e) => setChampionship(e.target.value)} aria-label="Campeonato">
+            <option value="">Todos los campeonatos</option>
+            {championships.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
         <button className="primary" onClick={() => setCreating(true)}>+ Nueva sesión</button>
       </header>
       {sessions.length ? (

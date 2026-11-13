@@ -109,6 +109,11 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE clients ADD COLUMN website TEXT;
   CREATE INDEX idx_clients_team ON clients(team_id);
   CREATE INDEX idx_clients_kind ON clients(kind);
+  `,
+  // v4: campeonato de las sesiones de tipo «Carrera».
+  `
+  ALTER TABLE sessions ADD COLUMN championship TEXT;
+  CREATE INDEX idx_sessions_championship ON sessions(championship);
   `
 ]
 

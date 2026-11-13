@@ -55,7 +55,7 @@ app.whenReady().then(() => {
   })
 
   registerIpc(db, storage)
-  setupUpdater()
+  setupUpdater(db)
   createWindow()
   app.on('activate', () => BrowserWindow.getAllWindows().length === 0 && createWindow())
   app.on('will-quit', () => { stopImageWorker(); db.close() })

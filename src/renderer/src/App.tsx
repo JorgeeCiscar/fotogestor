@@ -8,6 +8,7 @@ import SearchView from './components/SearchView'
 import InvoicesView from './components/InvoicesView'
 import SettingsView from './components/SettingsView'
 import UpdateBanner, { AppVersion } from './components/UpdateBanner'
+import WhatsNew from './components/WhatsNew'
 
 export type View =
   | { name: 'dashboard' }
@@ -68,6 +69,7 @@ export default function App() {
         {view.name === 'invoices' && <InvoicesView nav={nav} openId={view.openId} newForSession={view.newForSession} />}
         {view.name === 'settings' && <SettingsView />}
       </main>
+      <WhatsNew />
     </div>
   )
 }

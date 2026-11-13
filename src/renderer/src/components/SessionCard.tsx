@@ -11,6 +11,7 @@ export default function SessionCard({ s, onOpen }: { s: Session; onOpen: () => v
       <div className="session-card-body">
         <strong>{s.title}</strong>
         <span className="muted">{[s.client_name, s.type].filter(Boolean).join(' · ') || '—'}</span>
+        {s.championship && <span className="chip small-chip championship">🏁 {s.championship}</span>}
         <span className="muted small">
           {formatDate(s.date)} · {s.photo_count ?? 0} fotos{s.pick_count ? ` · ${s.pick_count} elegidas` : ''}
         </span>

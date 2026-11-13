@@ -7,6 +7,7 @@ const fs = require('node:fs')
 const os = require('node:os')
 const { execFileSync } = require('node:child_process')
 const { _electron, chromium } = require('playwright')
+const { DatabaseSync } = require('node:sqlite')
 
 const ROOT = path.resolve(__dirname, '..')
 const S = fs.mkdtempSync(path.join(process.env.E2E_OUT || os.tmpdir(), 'fotogestor-e2e-'))
@@ -338,6 +339,40 @@ function check(name, ok, detail = '') {
   await win.keyboard.press('Escape')
   check('fototeca: Esc quita la selección', (await win.locator('.lib-thumb.selected').count()) === 0)
 
+  // --- Sesión de tipo «Carrera» con campeonato ---
+  await win.click('nav >> text=Sesiones'); await win.click('text=+ Nueva sesión')
+  check('carrera: sin campo de campeonato al principio', (await win.locator('.race-field').count()) === 0)
+  await win.selectOption('.modal label:has-text("Tipo") select', 'Carrera')
+  await win.waitForSelector('.race-field')
+  check('carrera: aparece el campo de campeonato', true)
+  await win.fill('.modal label:has-text("Título") input', 'ESBK Cheste - Carrera 1')
+  await win.fill('.race-field input', 'Campeonato de España de Velocidad')
+  await win.fill('.modal input[type=date]', '2026-09-20')
+  await win.fill('.modal label:has-text("Lugar") input', 'Circuit Ricardo Tormo')
+  await win.click('.modal button:has-text("Guardar")')
+  await win.waitForSelector('.session-page')
+  const raceHeader = (await win.textContent('.session-title')).replace(/\s+/g, ' ')
+  check('carrera: campeonato en la sesión', raceHeader.includes('Campeonato de España de Velocidad'), raceHeader)
+  // Al cambiar de tipo, el campeonato desaparece y deja de guardarse.
+  await win.click('.page-header button:has-text("Editar")')
+  await win.selectOption('.modal label:has-text("Tipo") select', 'Retrato')
+  check('carrera: el campo se oculta en otros tipos', (await win.locator('.race-field').count()) === 0)
+  await win.selectOption('.modal label:has-text("Tipo") select', 'Carrera')
+  check('carrera: el campeonato se conserva al volver', (await win.inputValue('.race-field input')) === 'Campeonato de España de Velocidad')
+  await win.click('.modal button:has-text("Guardar")')
+  await win.waitForSelector('.session-page')
+
+  await win.click('nav >> text=Sesiones'); await win.waitForTimeout(400)
+  check('carrera: campeonato en la tarjeta', (await win.locator('.session-card .championship').count()) === 1)
+  await win.selectOption('select[aria-label="Campeonato"]', 'Campeonato de España de Velocidad')
+  await win.waitForTimeout(400)
+  check('carrera: filtro por campeonato', (await win.locator('.session-card').count()) === 1)
+  await shot('sesiones-carrera')
+  await win.selectOption('select[aria-label="Campeonato"]', '')
+  await win.keyboard.press('Control+k')
+  await win.fill('.search-big', 'velocidad'); await win.waitForTimeout(500)
+  check('carrera: búsqueda por campeonato', (await win.locator('.session-card').count()) === 1)
+
   // --- Panel ---
   await win.click('nav >> text=Panel'); await win.waitForTimeout(500)
   const panel = await win.textContent('.page')
@@ -346,6 +381,55 @@ function check(name, ok, detail = '') {
 
   check('sin errores en la app', errors.length === 0, errors.join(' | '))
   await app.close()
+
+  // --- Ventana de novedades tras actualizar ---
+  const version = require('../package.json').version
+  const dbFile = path.join(S, 'data', 'fotogestor.db')
+  const readSeen = () => {
+    const db = new DatabaseSync(dbFile)
+    const row = db.prepare("SELECT value FROM settings WHERE key = 'last_seen_version'").get()
+    db.close()
+    return row?.value ?? null
+  }
+  check('novedades: no se muestran en la primera ejecución', readSeen() === version, String(readSeen()))
+
+  const setSeen = (v) => {
+    const db = new DatabaseSync(dbFile)
+    db.prepare("INSERT INTO settings (key, value) VALUES ('last_seen_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(v)
+    db.close()
+  }
+  const relaunch = async () => {
+    const a2 = await _electron.launch({ executablePath: require('electron'), args: [ROOT, '--no-sandbox'],
+      env: { ...process.env, FOTOGESTOR_DATA_DIR: path.join(S, 'data') } })
+    const w2 = await a2.firstWindow()
+    await w2.setViewportSize({ width: 1400, height: 900 })
+    await w2.waitForSelector('.sidebar')
+    await w2.waitForTimeout(1500)
+    return { a2, w2 }
+  }
+
+  setSeen('0.3.0')
+  {
+    const { a2, w2 } = await relaunch()
+    const shown = await w2.locator('.modal:has-text("FotoGestor")').count()
+    check('novedades: se abren tras actualizar', shown === 1)
+    if (shown) {
+      const text = (await w2.textContent('.whats-new')).replace(/\s+/g, ' ')
+      check('novedades: listan los cambios de la versión', text.includes('Carrera') && text.includes(version), text.slice(0, 120))
+      check('novedades: incluyen las versiones intermedias', text.includes('v0.4.0') && text.includes('v0.5.0'))
+      await w2.screenshot({ path: path.join(S, 'shots', 'novedades.png') })
+      await w2.click('.whats-new button:has-text("Entendido")')
+      await w2.waitForTimeout(300)
+      check('novedades: se cierran', (await w2.locator('.whats-new').count()) === 0)
+    }
+    await a2.close()
+  }
+  check('novedades: queda guardada la versión vista', readSeen() === version, String(readSeen()))
+  {
+    const { a2, w2 } = await relaunch()
+    check('novedades: no se repiten al reabrir', (await w2.locator('.whats-new').count()) === 0)
+    await a2.close()
+  }
 
   // Generar una imagen del PDF para revisarla (si pdftoppm está disponible).
   try { execFileSync('pdftoppm', ['-png', '-r', '60', '-singlefile', pdfFile, path.join(S, 'shots', 'factura-pdf')]) } catch {}
