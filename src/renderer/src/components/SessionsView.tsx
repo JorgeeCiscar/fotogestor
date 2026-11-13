@@ -23,7 +23,7 @@ export default function SessionsView({ nav, clientId, create }: { nav: (v: View)
   return (
     <div className="page">
       <header className="page-header">
-        <h1>Sesiones</h1>
+        <h1>Eventos</h1>
         <select value={client} onChange={(e) => setClient(e.target.value ? Number(e.target.value) : '')}>
           <option value="">Todos los clientes</option>
           {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -38,14 +38,14 @@ export default function SessionsView({ nav, clientId, create }: { nav: (v: View)
             {championships.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         )}
-        <button className="primary" onClick={() => setCreating(true)}>+ Nueva sesión</button>
+        <button className="primary" onClick={() => setCreating(true)}>+ Nuevo evento</button>
       </header>
       {sessions.length ? (
         <div className="card-grid">
           {sessions.map((s) => <SessionCard key={s.id} s={s} onOpen={() => nav({ name: 'session', id: s.id })} />)}
         </div>
       ) : (
-        <p className="empty">No hay sesiones con estos filtros.</p>
+        <p className="empty">No hay eventos con estos filtros.</p>
       )}
       {creating && (
         <SessionForm defaultClientId={client || undefined} onClose={() => setCreating(false)}

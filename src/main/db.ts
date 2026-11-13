@@ -173,6 +173,24 @@ export const MIGRATIONS: string[] = [
   CREATE INDEX idx_contacts_kind ON contacts(kind);
   ALTER TABLE sessions ADD COLUMN circuit_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL;
   ALTER TABLE sessions ADD COLUMN organizer_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL;
+  `,
+  // v8: días del evento y asignación de fotos a pilotos.
+  `
+  CREATE TABLE event_days (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    date TEXT,
+    label TEXT,
+    position INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX idx_event_days_session ON event_days(session_id);
+  ALTER TABLE photos ADD COLUMN day_id INTEGER REFERENCES event_days(id) ON DELETE SET NULL;
+  CREATE TABLE photo_pilots (
+    photo_id INTEGER NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
+    client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    PRIMARY KEY (photo_id, client_id)
+  );
+  CREATE INDEX idx_photo_pilots_client ON photo_pilots(client_id);
   `
 ]
 

@@ -1,20 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Flag, ImportProgress, Photo, PhotoPatch, Session } from '../../../shared/types'
+import type { EventDay, Flag, ImportProgress, Photo, PhotoPatch, Session } from '../../../shared/types'
 import type { View } from '../App'
-import { api, errorMessage, formatDate, formatMoney, STATUS_LABEL } from '../util'
+import { api, dayLabel, errorMessage, formatDate, formatMoney, STATUS_LABEL } from '../util'
+import DayForm from './DayForm'
+import PilotAssignDialog from './PilotAssignDialog'
 import { BulkTagDialog, GalleryDialog, SelectionDialog } from './SessionDialogs'
 import SessionForm from './SessionForm'
 import Stars from './Stars'
 import TagInput from './TagInput'
 
 type Filter = 'all' | 'pick' | 'reject' | 'none' | 'rated' | 'client'
-type Dialog = 'edit' | 'gallery' | 'selection' | 'tag' | null
+type Dialog = 'edit' | 'gallery' | 'selection' | 'tag' | 'pilots' | 'day' | null
+/** Día activo: null = todas las fotos, 'none' = las que no tienen día. */
+type ActiveDay = number | 'none' | null
 
 export default function SessionDetail({ id, photoId, nav }: { id: number; photoId?: number; nav: (v: View) => void }) {
   const [session, setSession] = useState<Session | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
   const [filter, setFilter] = useState<Filter>('all')
   const [tagFilter, setTagFilter] = useState('')
+  const [pilotFilter, setPilotFilter] = useState(0)
+  const [days, setDays] = useState<EventDay[]>([])
+  const [activeDay, setActiveDay] = useState<ActiveDay>(null)
+  const [editingDay, setEditingDay] = useState<EventDay | undefined>()
   const [focus, setFocus] = useState(0)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [viewer, setViewer] = useState(false)
@@ -26,9 +34,10 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
   const jumped = useRef(false)
 
   const load = useCallback(async () => {
-    const [s, p] = await Promise.all([api.sessions.get(id), api.photos.list(id)])
+    const [s, p, d] = await Promise.all([api.sessions.get(id), api.photos.list(id), api.days.list(id)])
     setSession(s)
     setPhotos(p)
+    setDays(d)
     // Al llegar desde la búsqueda, enfocar la foto buscada.
     if (photoId && !jumped.current) {
       jumped.current = true
@@ -40,8 +49,20 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
   useEffect(() => api.photos.onImportProgress((p) => p.sessionId === id && setProgress(p)), [id])
   useEffect(() => { if (toast) { const t = setTimeout(() => setToast(''), 5000); return () => clearTimeout(t) } }, [toast])
 
+  const eventPilots = useMemo(() => {
+    const m = new Map<number, { id: number; name: string; racing_number: string | null; n: number }>()
+    for (const p of photos) for (const x of p.pilots) {
+      const cur = m.get(x.id)
+      m.set(x.id, { ...x, n: (cur?.n ?? 0) + 1 })
+    }
+    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name))
+  }, [photos])
+  const withoutDay = useMemo(() => photos.filter((p) => p.day_id === null).length, [photos])
+
   const allTags = useMemo(() => [...new Set(photos.flatMap((p) => p.tags))].sort((a, b) => a.localeCompare(b)), [photos])
   const visible = useMemo(() => photos.filter((p) => {
+    if (activeDay === 'none' ? p.day_id !== null : activeDay !== null && p.day_id !== activeDay) return false
+    if (pilotFilter && !p.pilots.some((x) => x.id === pilotFilter)) return false
     if (tagFilter && !p.tags.includes(tagFilter)) return false
     switch (filter) {
       case 'pick': return p.flag === 'pick'
@@ -51,7 +72,7 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
       case 'client': return p.client_pick === 1
       default: return true
     }
-  }), [photos, filter, tagFilter])
+  }), [photos, filter, tagFilter, pilotFilter, activeDay])
 
   const current = visible[Math.min(focus, visible.length - 1)]
   const counts = useMemo(() => ({
@@ -84,6 +105,23 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
     try { await api.photos.removeTag(ids, tag) } catch (err) { setToast(errorMessage(err)); load() }
   }, [load])
 
+  const assignPilot = useCallback(async (clientId: number, assign: boolean) => {
+    const ids = targets()
+    if (!ids.length) return
+    try {
+      await api.photos.assign(ids, clientId, assign)
+      const [p] = await Promise.all([api.photos.list(id)])
+      setPhotos(p)
+    } catch (err) { setToast(errorMessage(err)) }
+  }, [targets, id])
+
+  const moveToDay = useCallback(async (dayId: number | null) => {
+    const ids = targets()
+    if (!ids.length) return
+    await api.photos.setDay(ids, dayId)
+    load()
+  }, [targets, load])
+
   const setFlag = useCallback((flag: Flag) => {
     const ids = targets()
     // Pulsar la misma marca sobre una sola foto la quita (como un interruptor).
@@ -110,7 +148,13 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
         case 'x': case 'X': return setFlag('reject')
         case 'u': case 'U': return patch(targets(), { flag: null })
         case 't': case 'T': e.preventDefault(); return targets().length && setDialog('tag')
-        case 'a': if (e.ctrlKey || e.metaKey) { e.preventDefault(); setSelected(new Set(visible.map((p) => p.id))) } return
+
+        case 'a': case 'A':
+          e.preventDefault()
+          // Ctrl+A selecciona todas; A sola abre la asignación a pilotos.
+          if (e.ctrlKey || e.metaKey) setSelected(new Set(visible.map((p) => p.id)))
+          else if (targets().length) setDialog('pilots')
+          return
       }
       if (/^[0-5]$/.test(e.key)) patch(targets(), { rating: Number(e.key) })
     }
@@ -138,12 +182,13 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
     }
   }
   const changeFilter = (f: Filter, tag = tagFilter) => { setFilter(f); setTagFilter(tag); setFocus(0); setSelected(new Set()) }
+  const changeDay = (d: ActiveDay) => { setActiveDay(d); setFocus(0); setSelected(new Set()) }
 
   async function doImport() {
     setImporting(true)
     setProgress(null)
     try {
-      const res = await api.photos.importFiles(id)
+      const res = await api.photos.importFiles(id, typeof activeDay === 'number' ? activeDay : null)
       if (!res) return
       await load()
       const parts = [`${res.imported} importadas`]
@@ -172,7 +217,7 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
   }
 
   async function removeSession() {
-    if (!session || !confirm(`¿Eliminar la sesión "${session.title}" y sus ${photos.length} fotos? No se puede deshacer.`)) return
+    if (!session || !confirm(`¿Eliminar el evento "${session.title}" y sus ${photos.length} fotos? No se puede deshacer.`)) return
     await api.sessions.remove(id)
     nav({ name: 'sessions' })
   }
@@ -184,7 +229,7 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
   return (
     <div className="page session-page">
       <header className="page-header">
-        <button className="ghost" onClick={() => nav({ name: 'sessions' })}>← Sesiones</button>
+        <button className="ghost" onClick={() => nav({ name: 'sessions' })}>← Eventos</button>
         <div className="session-title">
           <h1>{session.title} <span className={`badge status-${session.status}`}>{STATUS_LABEL[session.status]}</span></h1>
           <span className="muted">
@@ -218,6 +263,38 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
         <button className="ghost danger" onClick={removeSession}>Eliminar</button>
       </header>
 
+      <div className="day-bar">
+        <div className="segmented">
+          <button className={activeDay === null ? 'active' : ''} onClick={() => changeDay(null)}>
+            Todas <span className="muted">{photos.length}</span>
+          </button>
+          {days.map((d) => (
+            <button key={d.id} className={activeDay === d.id ? 'active' : ''} onClick={() => changeDay(d.id)}>
+              {dayLabel(d)} <span className="muted">{d.photo_count ?? 0}</span>
+            </button>
+          ))}
+          {days.length > 0 && withoutDay > 0 && (
+            <button className={activeDay === 'none' ? 'active' : ''} onClick={() => changeDay('none')}>
+              Sin día <span className="muted">{withoutDay}</span>
+            </button>
+          )}
+        </div>
+        <button className="ghost" onClick={() => { setEditingDay(undefined); setDialog('day') }}>+ Añadir día</button>
+        {typeof activeDay === 'number' && (
+          <>
+            <button className="ghost" onClick={() => { setEditingDay(days.find((d) => d.id === activeDay)); setDialog('day') }}>Editar día</button>
+            <button className="ghost danger" onClick={async () => {
+              const d = days.find((x) => x.id === activeDay)
+              if (!d || !confirm(`¿Eliminar el día «${dayLabel(d)}»? Sus fotos se quedan en el evento, sin día.`)) return
+              await api.days.remove(d.id)
+              changeDay(null)
+              load()
+            }}>Eliminar día</button>
+          </>
+        )}
+        {days.length === 0 && <span className="muted small">Añade los días a los que asistes para organizar las fotos.</span>}
+      </div>
+
       <div className="toolbar">
         <div className="segmented">
           {FILTERS.map(([f, label]) => (
@@ -230,8 +307,24 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
             {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         )}
+        {eventPilots.length > 0 && (
+          <select value={pilotFilter} onChange={(e) => { setPilotFilter(Number(e.target.value)); setFocus(0); setSelected(new Set()) }} aria-label="Filtrar por piloto">
+            <option value={0}>Todos los pilotos</option>
+            {eventPilots.map((p) => (
+              <option key={p.id} value={p.id}>{p.racing_number ? `#${p.racing_number} ` : ''}{p.name} ({p.n})</option>
+            ))}
+          </select>
+        )}
         <span className="muted small">{visible.length} / {photos.length} fotos{selected.size > 1 ? ` · ${selected.size} seleccionadas` : ''}</span>
         <span className="spacer" />
+        {days.length > 0 && selected.size > 0 && (
+          <select value="" aria-label="Mover a un día" onChange={(e) => moveToDay(e.target.value === 'none' ? null : Number(e.target.value))}>
+            <option value="">Mover a…</option>
+            {days.map((d) => <option key={d.id} value={d.id}>{dayLabel(d)}</option>)}
+            <option value="none">Sin día</option>
+          </select>
+        )}
+        <button onClick={() => setDialog('pilots')} disabled={!targets().length}>Asignar a piloto</button>
         {counts.reject > 0 && <button className="ghost danger" onClick={removeRejected}>Eliminar descartadas</button>}
         <button onClick={() => setDialog('gallery')} disabled={!photos.length}>Galería cliente</button>
         <button onClick={() => setDialog('selection')} disabled={!photos.length}>Importar selección</button>
@@ -243,7 +336,7 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
 
       {photos.length === 0 ? (
         <div className="dropzone">
-          <p>Esta sesión aún no tiene fotos.</p>
+          <p>Este evento aún no tiene fotos.</p>
           <button className="primary" onClick={doImport} disabled={importing}>
             {importing ? (progress ? `Importando ${progress.done}/${progress.total}…` : 'Importando…') : 'Importar fotos o una carpeta'}
           </button>
@@ -257,6 +350,11 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
               onClick={(e) => clickThumb(e, i)} onDoubleClick={() => { setFocus(i); setViewer(true) }}>
               <img src={api.mediaUrl(p.thumb_key)} loading="lazy" alt={p.file_name} />
               {p.is_raw === 1 && <span className="raw-badge">RAW</span>}
+              {p.pilots.length > 0 && (
+                <span className="pilot-badge" title={p.pilots.map((x) => x.name).join(', ')}>
+                  {p.pilots.map((x) => x.racing_number || x.name.split(' ')[0]).join(' · ')}
+                </span>
+              )}
               {p.client_pick === 1 && <span className="client-heart" title="Favorita del cliente">♥</span>}
               <div className="thumb-meta">
                 <Stars value={p.rating} onChange={(v) => patch([p.id], { rating: v })} />
@@ -271,7 +369,7 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
       )}
 
       <footer className="shortcuts muted small">
-        ← → ↑ ↓ navegar · Enter ver · P elegir · X descartar · U quitar marca · 0–5 estrellas · T etiquetar · Ctrl/Shift+clic selección múltiple · Ctrl+A todas
+        ← → ↑ ↓ navegar · Enter ver · P elegir · X descartar · U quitar marca · 0–5 estrellas · T etiquetar · A asignar a piloto · Ctrl/Shift+clic selección múltiple · Ctrl+A todas
       </footer>
 
       {viewer && current && (
@@ -287,6 +385,20 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
             <button className={current.client_pick ? 'client-on' : 'ghost'} onClick={() => patch([current.id], { client_pick: current.client_pick ? 0 : 1 })}>
               ♥ {current.client_pick ? 'Favorita del cliente' : 'Marcar como favorita del cliente'}
             </button>
+            <div>
+              <div className="muted small" style={{ marginBottom: 4 }}>Pilotos</div>
+              {current.pilots.length ? (
+                <div className="chips">
+                  {current.pilots.map((x) => (
+                    <span key={x.id} className="chip">
+                      {x.racing_number && <span className="dorsal">{x.racing_number}</span>}{x.name}
+                      <button onClick={() => assignPilot(x.id, false)} aria-label={`Quitar ${x.name}`}>✕</button>
+                    </span>
+                  ))}
+                </div>
+              ) : <p className="muted small" style={{ margin: 0 }}>Sin asignar</p>}
+              <button className="ghost" style={{ marginTop: 6 }} onClick={() => setDialog('pilots')}>Asignar a piloto…</button>
+            </div>
             <div>
               <div className="muted small" style={{ marginBottom: 4 }}>Etiquetas</div>
               <TagInput value={current.tags} onAdd={(t) => addTag([current.id], t)} onRemove={(t) => removeTag([current.id], t)} />
@@ -307,12 +419,20 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
         </div>
       )}
 
-      {dialog === 'edit' && <SessionForm session={session} onClose={() => setDialog(null)} onSaved={() => closeDialog('Sesión guardada')} />}
+      {dialog === 'edit' && <SessionForm session={session} onClose={() => setDialog(null)} onSaved={() => closeDialog('Evento guardado')} />}
       {dialog === 'gallery' && (
         <GalleryDialog sessionId={id} pickCount={counts.pick} total={photos.length - counts.reject}
           onClose={() => setDialog(null)} onDone={closeDialog} />
       )}
       {dialog === 'selection' && <SelectionDialog sessionId={id} onClose={() => setDialog(null)} onDone={(m) => { closeDialog(m); changeFilter('client', '') }} />}
+      {dialog === 'pilots' && (
+        <PilotAssignDialog photos={photos.filter((p) => targets().includes(p.id))}
+          onClose={() => setDialog(null)} onChange={assignPilot} />
+      )}
+      {dialog === 'day' && (
+        <DayForm sessionId={id} day={editingDay} defaultDate={session.date}
+          onClose={() => setDialog(null)} onSaved={() => { setDialog(null); load() }} />
+      )}
       {dialog === 'tag' && <BulkTagDialog count={targets().length} onClose={() => setDialog(null)} onAdd={(t) => addTag(targets(), t)} />}
       {toast && <div className="toast">{toast}</div>}
     </div>

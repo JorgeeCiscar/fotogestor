@@ -27,7 +27,7 @@ export default function ClientsView({ nav }: { nav: (v: View) => void }) {
 
   async function remove(c: Client) {
     const extra = c.kind === 'equipo' && c.pilot_count ? ` Sus ${c.pilot_count} pilotos quedarán sin equipo.` : ''
-    if (!confirm(`¿Eliminar a ${c.name}? Sus sesiones se conservarán sin cliente asignado.${extra}`)) return
+    if (!confirm(`¿Eliminar a ${c.name}? Sus eventos se conservarán sin cliente asignado.${extra}`)) return
     try { await api.clients.remove(c.id); load() } catch (err) { alert(errorMessage(err)) }
   }
 
@@ -61,7 +61,7 @@ export default function ClientsView({ nav }: { nav: (v: View) => void }) {
       </div>
       {filtered.length ? (
         <table className="table clients-table">
-          <thead><tr><th>Cliente</th><th>Tipo</th><th>Contacto</th><th>Sesiones</th><th /></tr></thead>
+          <thead><tr><th>Cliente</th><th>Tipo</th><th>Contacto</th><th>Eventos</th><th /></tr></thead>
           <tbody>
             {filtered.map((c) => (
               <tr key={c.id} className="clickable" onClick={() => nav({ name: 'client', id: c.id })}>

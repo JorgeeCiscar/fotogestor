@@ -62,3 +62,14 @@ export function itemsTotal(items: { quantity: number; unit_price: number }[]): n
 
 export const CONTACT_KIND_LABEL: Record<string, string> = { circuito: 'Circuito', organizador: 'Organizador' }
 export const CONTACT_KIND_ICON: Record<string, string> = { circuito: '🏁', organizador: '🏆' }
+
+/** Etiqueta corta de un día: «Vie 20 sept · Carrera 1». */
+export function dayLabel(d: { date: string | null; label: string | null }): string {
+  const parts: string[] = []
+  if (d.date) {
+    const date = new Date(d.date + 'T00:00:00')
+    parts.push(date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).replace('.', ''))
+  }
+  if (d.label) parts.push(d.label)
+  return parts.join(' · ') || 'Día'
+}

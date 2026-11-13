@@ -9,19 +9,19 @@ const PAGE = 200
 const SORTS: [LibrarySort, string][] = [
   ['date_desc', 'Más recientes'],
   ['date_asc', 'Más antiguas'],
-  ['session', 'Por sesión'],
+  ['session', 'Por evento'],
   ['rating', 'Mejor valoradas'],
   ['name', 'Nombre de archivo']
 ]
 
-/** Fototeca: todas las fotos de todas las sesiones, con filtros, selección y copia. */
-export default function LibraryView({ nav, clientId }: { nav: (v: View) => void; clientId?: number }) {
+/** Fototeca: todas las fotos de todos los eventos, con filtros, selección y copia. */
+export default function LibraryView({ nav, clientId, pilotId }: { nav: (v: View) => void; clientId?: number; pilotId?: number }) {
   const [sessions, setSessions] = useState<Session[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [tags, setTags] = useState<string[]>([])
   const [sessionIds, setSessionIds] = useState<number[]>([])
   const [sessionQuery, setSessionQuery] = useState('')
-  const [filter, setFilter] = useState<Omit<LibraryFilter, 'sessionIds'>>({ sort: 'date_desc', clientId })
+  const [filter, setFilter] = useState<Omit<LibraryFilter, 'sessionIds'>>({ sort: 'date_desc', clientId, pilotId })
   const [q, setQ] = useState('')
   const [photos, setPhotos] = useState<LibraryPhoto[]>([])
   const [total, setTotal] = useState(0)
@@ -129,16 +129,16 @@ export default function LibraryView({ nav, clientId }: { nav: (v: View) => void;
   const visibleSessions = sessions.filter((s) =>
     !sessionQuery.trim() || [s.title, s.client_name, s.type].some((v) => v?.toLowerCase().includes(sessionQuery.toLowerCase())))
   const setF = <K extends keyof LibraryFilter>(k: K, v: LibraryFilter[K]) => setFilter((f) => ({ ...f, [k]: v }))
-  const hasFilters = sessionIds.length > 0 || !!(filter.clientId || filter.flag || filter.minRating || filter.tag || filter.rawOnly || q)
+  const hasFilters = sessionIds.length > 0 || !!(filter.pilotId || filter.clientId || filter.flag || filter.minRating || filter.tag || filter.rawOnly || q)
 
   return (
     <div className="library">
       <aside className="lib-sessions">
         <div className="lib-sessions-head">
-          <strong>Sesiones</strong>
+          <strong>Eventos</strong>
           {sessionIds.length > 0 && <button className="link" onClick={() => setSessionIds([])}>Ver todas</button>}
         </div>
-        <input placeholder="Filtrar sesiones…" value={sessionQuery} onChange={(e) => setSessionQuery(e.target.value)} />
+        <input placeholder="Filtrar eventos…" value={sessionQuery} onChange={(e) => setSessionQuery(e.target.value)} />
         <div className="lib-session-list">
           {visibleSessions.map((s) => (
             <label key={s.id} className={`lib-session ${sessionIds.includes(s.id) ? 'on' : ''}`}>
@@ -150,7 +150,7 @@ export default function LibraryView({ nav, clientId }: { nav: (v: View) => void;
               <span className="muted small">{s.photo_count ?? 0}</span>
             </label>
           ))}
-          {!visibleSessions.length && <p className="muted small">Ninguna sesión coincide.</p>}
+          {!visibleSessions.length && <p className="muted small">Ningún evento coincide.</p>}
         </div>
       </aside>
 
@@ -199,18 +199,18 @@ export default function LibraryView({ nav, clientId }: { nav: (v: View) => void;
               <button className="ghost" onClick={() => setSelected(new Set())}>Quitar selección</button>
               <span className="spacer" />
               <span className="muted small">o arrástralas a una carpeta</span>
-              <label className="check"><input type="checkbox" checked={bySession} onChange={(e) => setBySession(e.target.checked)} /> Una carpeta por sesión</label>
+              <label className="check"><input type="checkbox" checked={bySession} onChange={(e) => setBySession(e.target.checked)} /> Una carpeta por evento</label>
               <button className="primary" onClick={copy} disabled={!!copying}>
                 {copying ? `Copiando ${copying.done}/${copying.total}…` : 'Copiar a carpeta…'}
               </button>
             </>
           ) : (
-            <span className="muted small">Haz clic para seleccionar · Ctrl+clic para añadir · Shift+clic para un rango · Ctrl+A para todas · doble clic abre la sesión</span>
+            <span className="muted small">Haz clic para seleccionar · Ctrl+clic para añadir · Shift+clic para un rango · Ctrl+A para todas · doble clic abre el evento</span>
           )}
         </div>
 
         {total === 0 && !loading ? (
-          <p className="empty">{hasFilters ? 'Ninguna foto coincide con los filtros.' : 'Aún no hay fotos. Importa fotos desde una sesión.'}</p>
+          <p className="empty">{hasFilters ? 'Ninguna foto coincide con los filtros.' : 'Aún no hay fotos. Importa fotos desde un evento.'}</p>
         ) : (
           <div className="lib-grid">
             {photos.map((p, i) => (

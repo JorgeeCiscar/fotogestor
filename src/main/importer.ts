@@ -46,6 +46,7 @@ export async function importPhotos(
   db: DB,
   storage: LocalStorage,
   sessionId: number,
+  dayId: number | null,
   files: string[],
   onProgress: (p: ImportProgress) => void
 ): Promise<ImportResult> {
@@ -54,9 +55,9 @@ export async function importPhotos(
   const nameTaken = db.prepare('SELECT 1 FROM photos WHERE session_id = ? AND original_key = ?')
   const insert = db.prepare(`
     INSERT INTO photos (session_id, file_name, original_key, thumb_key, preview_key, file_size,
-      width, height, taken_at, camera, lens, iso, aperture, shutter, focal_length, is_raw)
+      width, height, taken_at, camera, lens, iso, aperture, shutter, focal_length, is_raw, day_id)
     VALUES (@session_id, @file_name, @original_key, @thumb_key, @preview_key, @file_size,
-      @width, @height, @taken_at, @camera, @lens, @iso, @aperture, @shutter, @focal_length, @is_raw)`)
+      @width, @height, @taken_at, @camera, @lens, @iso, @aperture, @shutter, @focal_length, @is_raw, @day_id)`)
 
   for (let i = 0; i < files.length; i++) {
     const src = files[i]
@@ -111,7 +112,8 @@ export async function importPhotos(
         aperture: exif?.FNumber ?? null,
         shutter: formatShutter(exif?.ExposureTime),
         focal_length: exif?.FocalLength ?? null,
-        is_raw: raw ? 1 : 0
+        is_raw: raw ? 1 : 0,
+        day_id: dayId
       })
       result.imported++
     } catch (err) {

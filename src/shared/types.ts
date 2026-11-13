@@ -46,7 +46,6 @@ export interface Client {
   pilot_count?: number
   pilot_names?: string | null
 }
-export interface PilotRef { id: number; name: string; racing_number: string | null }
 /** Cliente con sus pilotos (si es un equipo), para la ficha. */
 export type ClientDetail = Client & { pilots: PilotRef[] }
 
@@ -147,6 +146,19 @@ export interface SessionItem {
   unit_price: number
 }
 
+export interface PilotRef { id: number; name: string; racing_number: string | null }
+
+/** Día de un evento: una jornada a la que asistes (viernes, sábado…). */
+export interface EventDay {
+  id: number
+  session_id: number
+  date: string | null
+  label: string | null
+  position: number
+  photo_count?: number
+}
+export type EventDayInput = { id?: number; session_id: number; date: string | null; label: string | null }
+
 export interface Photo {
   id: number
   session_id: number
@@ -169,6 +181,9 @@ export interface Photo {
   /** 1 si el cliente la marcó como favorita en su galería. */
   client_pick: number
   is_raw: number
+  day_id: number | null
+  /** Pilotos que aparecen en la foto. */
+  pilots: PilotRef[]
   tags: string[]
   created_at: string
 }
@@ -274,6 +289,7 @@ export interface UpdateStatus {
 
 export type LibrarySort = 'date_desc' | 'date_asc' | 'rating' | 'session' | 'name'
 export interface LibraryFilter {
+  pilotId?: number
   sessionIds?: number[]
   clientId?: number
   flag?: 'pick' | 'reject' | 'none' | 'client'
@@ -301,11 +317,18 @@ export interface Api {
     save(s: SessionInput): Promise<Session>
     remove(id: number): Promise<void>
   }
+  days: {
+    list(sessionId: number): Promise<EventDay[]>
+    save(d: EventDayInput): Promise<EventDay>
+    remove(id: number): Promise<void>
+  }
   photos: {
     list(sessionId: number): Promise<Photo[]>
+    assign(ids: number[], clientId: number, assign: boolean): Promise<void>
+    setDay(ids: number[], dayId: number | null): Promise<void>
     update(ids: number[], patch: PhotoPatch): Promise<void>
     remove(ids: number[]): Promise<void>
-    importFiles(sessionId: number): Promise<ImportResult | null>
+    importFiles(sessionId: number, dayId?: number | null): Promise<ImportResult | null>
     exportPicks(sessionId: number): Promise<{ exported: number; folder: string } | null>
     reveal(id: number): Promise<void>
     addTag(ids: number[], tag: string): Promise<void>

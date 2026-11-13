@@ -5,7 +5,7 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
 
 **Stack:** Electron · React · TypeScript · Vite (electron-vite) · SQLite (`node:sqlite`, integrado en Electron) · sharp · exifr
 
-## Funcionalidades (v0.12)
+## Funcionalidades (v0.13)
 
 - **Clientes** de tres tipos, que se eligen al darlos de alta:
   - **Piloto**: dorsal, categoría, moto/coche, equipo, nacionalidad, fecha de nacimiento, licencia y,
@@ -15,9 +15,13 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
   Todos tienen contacto (email, teléfono, Instagram), NIF y dirección para facturar, y notas.
   Cada cliente tiene su **ficha**: datos, sesiones, fotos recientes, presupuestos y facturas,
   total facturado y navegación entre piloto y equipo.
-- **Sesiones**: cliente, tipo (Carrera, Entrenamientos, Track day, Boda…), fecha, lugar, precio, notas, etiquetas y estado
+- **Eventos** (antes «sesiones»; en el código siguen siendo `sessions`): cliente, tipo (Carrera, Entrenamientos, Track day, Boda…), fecha, lugar, precio, notas, etiquetas y estado
   (planificada → realizada → en edición → entregada). Las de tipo **Carrera** llevan además el
   **campeonato**, por el que se puede filtrar y buscar.
+- **Días del evento**: cada evento tiene sus jornadas (`event_days`); las fotos se importan al día abierto
+  y pueden moverse entre días.
+- **Fotos por piloto**: cada foto se asigna a uno o varios pilotos (`photo_pilots`), con filtro dentro del
+  evento y listado en la ficha del piloto.
 - **Importación** de ficheros o carpetas: JPEG, PNG, TIFF, WebP y **RAW** (CR2, CR3, NEF, ARW, RAF,
   DNG, ORF, RW2, PEF…). De los RAW se usa la vista previa a resolución completa que guarda la cámara;
   el original se copia intacto. Lee EXIF (cámara, objetivo, exposición, fecha) y omite duplicados.

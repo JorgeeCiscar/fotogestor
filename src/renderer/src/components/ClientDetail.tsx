@@ -35,7 +35,7 @@ export default function ClientDetail({ id, nav }: { id: number; nav: (v: View) =
     const [ss, inv, page] = await Promise.all([
       api.sessions.list({ clientId: id }),
       api.invoices.list({ clientId: id }),
-      api.library.query({ clientId: id, sort: 'date_desc' }, 0, 12)
+      api.library.query(c.kind === 'piloto' ? { pilotId: id, sort: 'date_desc' } : { clientId: id, sort: 'date_desc' }, 0, 12)
     ])
     setSessions(ss)
     setInvoices(inv)
@@ -47,7 +47,7 @@ export default function ClientDetail({ id, nav }: { id: number; nav: (v: View) =
   async function remove() {
     if (!client) return
     const extra = client.pilots.length ? ` Sus ${client.pilots.length} pilotos quedarán sin equipo.` : ''
-    if (!confirm(`¿Eliminar a ${client.name}? Sus sesiones se conservarán sin cliente asignado.${extra}`)) return
+    if (!confirm(`¿Eliminar a ${client.name}? Sus eventos se conservarán sin cliente asignado.${extra}`)) return
     try {
       await api.clients.remove(client.id)
       nav({ name: 'clients' })
@@ -82,13 +82,13 @@ export default function ClientDetail({ id, nav }: { id: number; nav: (v: View) =
               client.team_name].filter(Boolean).join(' · ')}
           </span>
         </div>
-        <button className="ghost" onClick={() => nav({ name: 'sessions', clientId: id, create: true })}>+ Sesión</button>
+        <button className="ghost" onClick={() => nav({ name: 'sessions', clientId: id, create: true })}>+ Evento</button>
         <button className="ghost" onClick={() => setEditing(true)}>Editar</button>
         <button className="ghost danger" onClick={remove}>Eliminar</button>
       </header>
 
       <div className="stats client-stats">
-        <div className="stat"><span>{sessions.length}</span>{sessions.length === 1 ? 'Sesión' : 'Sesiones'}</div>
+        <div className="stat"><span>{sessions.length}</span>{sessions.length === 1 ? 'Evento' : 'Eventos'}</div>
         <div className="stat"><span>{photoCount.toLocaleString('es-ES')}</span>Fotografías</div>
         <div className="stat"><span>{formatMoney(billed)}</span>Facturado</div>
         {kind === 'equipo' && <div className="stat"><span>{client.pilots.length}</span>{client.pilots.length === 1 ? 'Piloto' : 'Pilotos'}</div>}
@@ -165,18 +165,18 @@ export default function ClientDetail({ id, nav }: { id: number; nav: (v: View) =
         </section>
 
         <section className="client-activity">
-          <h2>Sesiones</h2>
+          <h2>Eventos</h2>
           {sessions.length ? (
             <div className="card-grid">
               {sessions.map((s) => <SessionCard key={s.id} s={s} onOpen={() => nav({ name: 'session', id: s.id })} />)}
             </div>
           ) : (
-            <p className="muted small">Todavía no hay sesiones de este cliente.</p>
+            <p className="muted small">Todavía no hay eventos de este cliente.</p>
           )}
 
           {photos.length > 0 && (
             <>
-              <h2>Fotos recientes</h2>
+              <h2>{client?.kind === 'piloto' ? 'Fotos asignadas' : 'Fotos recientes'}</h2>
               <div className="photo-results">
                 {photos.map((p) => (
                   <button key={p.id} className="photo-result" onClick={() => nav({ name: 'session', id: p.session_id, photoId: p.id })}
@@ -187,7 +187,7 @@ export default function ClientDetail({ id, nav }: { id: number; nav: (v: View) =
                 ))}
               </div>
               {photoCount > photos.length && (
-                <button className="ghost" onClick={() => nav({ name: 'library', clientId: id })}>
+                <button className="ghost" onClick={() => nav({ name: 'library', clientId: kind === 'piloto' ? undefined : id, pilotId: kind === 'piloto' ? id : undefined })}>
                   Ver las {photoCount.toLocaleString('es-ES')} fotos
                 </button>
               )}

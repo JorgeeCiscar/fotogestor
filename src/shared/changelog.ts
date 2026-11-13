@@ -14,6 +14,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.13.0',
+    date: '2026-11-13',
+    title: 'Eventos, días y fotos por piloto',
+    changes: [
+      'Las «sesiones» ahora se llaman eventos. Tus datos siguen igual.',
+      'Dentro de cada evento puedes crear los días a los que asistes (viernes, sábado…), y las fotos se importan al día que tengas abierto.',
+      'Las fotos ya importadas se mueven de día seleccionándolas y usando «Mover a…».',
+      'Nuevo botón «Asignar a piloto» (atajo A): marca qué pilotos salen en cada foto. El dorsal aparece en la miniatura.',
+      'Puedes filtrar las fotos del evento por piloto, y en la ficha de cada piloto ves todas sus fotos asignadas.'
+    ]
+  },
+  {
     version: '0.12.0',
     date: '2026-11-13',
     title: 'Contactos: circuitos y organizadores',

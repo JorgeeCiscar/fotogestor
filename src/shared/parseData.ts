@@ -53,9 +53,9 @@ const FIELDS: { key: string; label: string; aliases: string[]; targets: ParseTar
   { key: 'brand', label: 'Marca', targets: ['client'], aliases: ['marca', 'fabricante', 'constructor', 'patrocinador principal'] },
   { key: 'website', label: 'Web', targets: ['client'], aliases: ['web', 'pagina web', 'sitio web', 'url', 'www'] },
 
-  { key: 'title', label: 'Título', targets: ['session'], aliases: ['titulo', 'sesion', 'evento', 'nombre de la sesion', 'asunto', 'prueba'] },
+  { key: 'title', label: 'Título', targets: ['session'], aliases: ['titulo', 'sesion', 'evento', 'carrera', 'nombre de la sesion', 'asunto', 'prueba'] },
   { key: 'clientName', label: 'Cliente', targets: ['session'], aliases: ['cliente', 'para', 'piloto', 'equipo', 'contratante'] },
-  { key: 'type', label: 'Tipo', targets: ['session'], aliases: ['tipo', 'tipo de sesion', 'servicio'] },
+  { key: 'type', label: 'Tipo', targets: ['session'], aliases: ['tipo', 'tipo de sesion', 'tipo de evento', 'servicio'] },
   { key: 'championship', label: 'Campeonato', targets: ['session'], aliases: ['campeonato', 'championship', 'competicion', 'serie', 'copa'] },
   { key: 'date', label: 'Fecha', targets: ['session'], aliases: ['fecha', 'dia', 'fecha de la sesion', 'cuando'] },
   { key: 'location', label: 'Lugar', targets: ['session'], aliases: ['lugar', 'circuito', 'ubicacion', 'localizacion', 'sitio', 'direccion', 'donde'] },

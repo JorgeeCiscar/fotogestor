@@ -57,7 +57,7 @@ export function SelectionDialog({ sessionId, onClose, onDone }: { sessionId: num
     <Modal title="Importar selección del cliente" onClose={onClose}>
       <div className="form">
         <p className="muted">Pega el código que te ha enviado el cliente (empieza por <code>FOTOGESTOR-SELECCION</code>) o una lista de nombres de archivo.
-          Sustituye la selección anterior del cliente en esta sesión.</p>
+          Sustituye la selección anterior del cliente en este evento.</p>
         <textarea autoFocus rows={5} value={text} onChange={(e) => setText(e.target.value)} placeholder="FOTOGESTOR-SELECCION:…" />
         {error && <p className="error">{error}</p>}
         <footer>

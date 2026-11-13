@@ -106,15 +106,15 @@ export default function ContactDetail({ id, nav }: { id: number; nav: (v: View) 
         </section>
 
         <section className="client-activity">
-          <h2>Sesiones aquí</h2>
+          <h2>Eventos aquí</h2>
           {sessions.length ? (
             <div className="card-grid">
               {sessions.map((s) => <SessionCard key={s.id} s={s} onOpen={() => nav({ name: 'session', id: s.id })} />)}
             </div>
           ) : (
             <p className="muted small">
-              Todavía no hay sesiones con este {c.kind === 'circuito' ? 'circuito' : 'organizador'}.
-              {c.kind === 'circuito' && ' Escribe su nombre exacto en el «Lugar» de una sesión y se enlazará solo.'}
+              Todavía no hay eventos con este {c.kind === 'circuito' ? 'circuito' : 'organizador'}.
+              {c.kind === 'circuito' && ' Escribe su nombre exacto en el «Lugar» de un evento y se enlazará solo.'}
             </p>
           )}
         </section>

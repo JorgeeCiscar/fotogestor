@@ -4,7 +4,7 @@ import { join, parse } from 'node:path'
 import type { SQLInputValue } from 'node:sqlite'
 import type { CopyOptions, LibraryFilter, LibrarySort, Photo } from '../shared/types'
 import type { DB } from './db'
-import { like, withTags } from './ipc'
+import { like, withPilots, withTags } from './ipc'
 import type { LocalStorage } from './storage'
 
 const ORDER: Record<LibrarySort, string> = {
@@ -25,6 +25,7 @@ function where(f: LibraryFilter): { sql: string; params: SQLInputValue[] } {
   const ids = (f.sessionIds ?? []).filter((n) => Number.isInteger(n))
   if (ids.length) { w.push(`p.session_id IN (${ids.map(() => '?').join(',')})`); params.push(...ids) }
   if (f.clientId) { w.push('s.client_id = ?'); params.push(f.clientId) }
+  if (f.pilotId) { w.push('EXISTS (SELECT 1 FROM photo_pilots pp WHERE pp.photo_id = p.id AND pp.client_id = ?)'); params.push(f.pilotId) }
   if (f.flag === 'pick') w.push("p.flag = 'pick'")
   else if (f.flag === 'reject') w.push("p.flag = 'reject'")
   else if (f.flag === 'none') w.push('p.flag IS NULL')
@@ -64,7 +65,7 @@ export function registerLibraryIpc(db: DB, storage: LocalStorage): void {
         (SELECT group_concat(t.tag, char(31)) FROM photo_tags t WHERE t.photo_id = p.id) AS tags_raw
       ${FROM} ${sql} ORDER BY ${ORDER[f.sort ?? 'date_desc'] ?? ORDER.date_desc}
       LIMIT ? OFFSET ?`).all(...params, Math.min(Math.max(1, limit), 1000), Math.max(0, offset))
-    return { total, photos: rows.map((r) => withTags(r)) }
+    return { total, photos: withPilots(db, rows.map((r) => withTags(r)) as { id: number }[]) }
   })
 
   ipcMain.handle('library:ids', (_e, f: LibraryFilter) => {

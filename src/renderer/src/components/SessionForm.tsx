@@ -106,7 +106,7 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
   }
 
   return (
-    <Modal title={session ? 'Editar sesión' : 'Nueva sesión'} onClose={onClose}>
+    <Modal title={session ? 'Editar evento' : 'Nuevo evento'} onClose={onClose}>
       <form onSubmit={submit} className="form">
         <div className="row paste-row">
           <label>Título *<input autoFocus value={form.title} onChange={set('title')} placeholder="Boda Ana y Luis" /></label>
@@ -207,7 +207,7 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
           ) : (
             <p className="muted small">
               {tariffs.length
-                ? 'Elige el tipo de sesión para aplicar su tarifa, o añade un extra.'
+                ? 'Elige el tipo de evento para aplicar su tarifa, o añade un extra.'
                 : 'Todavía no has puesto precios. Añádelos en el apartado «Tarifas» y se aplicarán solos aquí.'}
             </p>
           )}

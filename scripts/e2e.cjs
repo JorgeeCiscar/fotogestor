@@ -140,7 +140,7 @@ function check(name, ok, detail = '') {
   })
   check('cliente: cambio de tipo limpia datos', saved.before === 'Jordi Pérez' && saved.after === null && saved.team === null, JSON.stringify(saved))
 
-  await win.click('nav >> text=Sesiones'); await win.click('text=+ Nueva sesión')
+  await win.click('nav >> text=Eventos'); await win.click('text=+ Nuevo evento')
   await win.fill('.modal label:has-text("Título") input', 'Boda Ana y Luis')
   await win.selectOption('.modal label:has-text("Cliente") select', { label: 'Ana García' })
   await win.selectOption('.modal label:has-text("Tipo") select', 'Boda')
@@ -293,7 +293,7 @@ function check(name, ok, detail = '') {
   // Segunda sesión con 2 fotos cuyos nombres coinciden con los de la primera.
   const imgs2 = path.join(S, 'imgs2'); fs.mkdirSync(imgs2)
   for (const f of ['DSCF1000.jpg', 'DSCF1001.jpg']) fs.copyFileSync(path.join(S, 'imgs', f), path.join(imgs2, f))
-  await win.click('nav >> text=Sesiones'); await win.click('text=+ Nueva sesión')
+  await win.click('nav >> text=Eventos'); await win.click('text=+ Nuevo evento')
   await win.fill('.modal label:has-text("Título") input', 'Retrato Marta')
   await win.click('.modal button:has-text("Guardar")')
   await win.waitForSelector('.dropzone')
@@ -339,7 +339,7 @@ function check(name, ok, detail = '') {
   // Copiar en subcarpetas por sesión.
   const nested = path.join(S, 'out', 'por-sesion'); fs.mkdirSync(nested)
   await stubOpen(nested)
-  await win.click('.lib-selbar label:has-text("Una carpeta por sesión") input')
+  await win.click('.lib-selbar label:has-text("Una carpeta por evento") input')
   await win.click('button:has-text("Copiar a carpeta")')
   await win.waitForFunction(() => document.querySelector('.toast')?.textContent?.includes('por-sesion'))
   const dirs = fs.readdirSync(nested).sort()
@@ -349,7 +349,7 @@ function check(name, ok, detail = '') {
   check('fototeca: Esc quita la selección', (await win.locator('.lib-thumb.selected').count()) === 0)
 
   // --- Sesión de tipo «Carrera» con campeonato ---
-  await win.click('nav >> text=Sesiones'); await win.click('text=+ Nueva sesión')
+  await win.click('nav >> text=Eventos'); await win.click('text=+ Nuevo evento')
   check('carrera: sin campo de campeonato al principio', (await win.locator('.race-field').count()) === 0)
   await win.selectOption('.modal label:has-text("Tipo") select', 'Carrera')
   await win.waitForSelector('.race-field')
@@ -371,7 +371,7 @@ function check(name, ok, detail = '') {
   await win.click('.modal button:has-text("Guardar")')
   await win.waitForSelector('.session-page')
 
-  await win.click('nav >> text=Sesiones'); await win.waitForTimeout(400)
+  await win.click('nav >> text=Eventos'); await win.waitForTimeout(400)
   check('carrera: campeonato en la tarjeta', (await win.locator('.session-card .championship').count()) === 1)
   await win.selectOption('select[aria-label="Campeonato"]', 'Campeonato de España de Velocidad')
   await win.waitForTimeout(400)
@@ -427,7 +427,7 @@ Un saludo!`)
   check('pegar: cliente guardado con sus datos', nuriaRow.includes('Speed Racing Team') && nuriaRow.includes('Kawasaki'), nuriaRow)
 
   // --- Pegar datos: sesión descrita en un correo ---
-  await win.click('nav >> text=Sesiones'); await win.click('text=+ Nueva sesión')
+  await win.click('nav >> text=Eventos'); await win.click('text=+ Nuevo evento')
   await win.click('.paste-row button:has-text("Pegar datos")')
   await win.fill('.paste-dialog textarea', `Sesión: ESBK Jerez - Carrera 2
 Cliente: Speed Racing Team
@@ -509,7 +509,7 @@ Notas: Entregar las fotos el lunes`)
   // Se borra la tarifa de Carrera del catálogo para probar el alta a mano.
   await win.click('.tariffs tr:has(input[value="Cobertura de carrera · piloto, fin de semana"]) button:has-text("Eliminar")')
   await win.waitForTimeout(400)
-  await win.click('button:has-text("+ Añadir tipo de sesión")')
+  await win.click('button:has-text("+ Añadir tipo de evento")')
   await win.selectOption('.tariffs tr:last-child select', 'Carrera')
   await win.fill('.tariffs tr:last-child td:nth-child(2) input', 'Cobertura de carrera')
   await win.fill('.tariffs tr:last-child .tariff-price input', '450')
@@ -532,7 +532,7 @@ Notas: Entregar las fotos el lunes`)
   await shot('tarifas')
 
   // Al crear una sesión de ese tipo, su tarifa se aplica sola.
-  await win.click('nav >> text=Sesiones'); await win.click('text=+ Nueva sesión')
+  await win.click('nav >> text=Eventos'); await win.click('text=+ Nuevo evento')
   await win.fill('.modal label:has-text("Título") input', 'ESBK Montmeló - Carrera 1')
   await win.selectOption('.modal label:has-text("Tipo") select', 'Carrera')
   await win.waitForSelector('.tariff-block .items')
@@ -600,7 +600,7 @@ Notas: Entregar las fotos el lunes`)
   await shot('contactos')
 
   // Una sesión nueva se enlaza sola al escribir el nombre del circuito en «Lugar».
-  await win.click('nav >> text=Sesiones'); await win.click('text=+ Nueva sesión')
+  await win.click('nav >> text=Eventos'); await win.click('text=+ Nuevo evento')
   await win.fill('.modal label:has-text("Título") input', 'ESBK Cheste - Carrera 2')
   await win.selectOption('.modal label:has-text("Tipo") select', 'Carrera')
   await win.fill('.modal label:has-text("Lugar") input', 'Circuit Ricardo Tormo')
@@ -622,6 +622,67 @@ Notas: Entregar las fotos el lunes`)
   await win.keyboard.press('Control+k')
   await win.fill('.search-big', 'tormo'); await win.waitForTimeout(500)
   check('búsqueda encuentra el circuito', (await win.locator('.result:has-text("Circuit Ricardo Tormo")').count()) === 1)
+
+  // --- Días del evento y asignación de fotos a pilotos ---
+  await win.click('nav >> text=Eventos')
+  await win.click('.session-card:has-text("Boda Ana y Luis")')
+  await win.waitForSelector('.day-bar')
+  check('evento: barra de días vacía al principio', (await win.locator('.day-bar .segmented button').count()) === 1)
+  await win.click('.day-bar button:has-text("+ Añadir día")')
+  await win.fill('.modal input[type=date]', '2026-12-12')
+  await win.fill('.modal label:has-text("Nombre") input', 'Preboda')
+  await win.click('.modal button:has-text("Guardar")')
+  await win.waitForSelector('.day-bar button:has-text("Preboda")')
+  await win.click('.day-bar button:has-text("+ Añadir día")')
+  await win.fill('.modal input[type=date]', '2026-12-13')
+  await win.fill('.modal label:has-text("Nombre") input', 'Ceremonia')
+  await win.click('.modal button:has-text("Guardar")')
+  await win.waitForSelector('.day-bar button:has-text("Ceremonia")')
+  check('evento: dos días creados', (await win.locator('.day-bar .segmented button').count()) === 4, String(await win.locator('.day-bar .segmented button').count()))
+
+  // Las fotos existentes no tienen día: se mueven al primero.
+  await win.click('.day-bar button:has-text("Sin día")')
+  await win.waitForTimeout(300)
+  check('evento: fotos sin día', (await win.locator('.thumb').count()) === expectedPhotos, String(await win.locator('.thumb').count()))
+  await win.keyboard.press('Control+a')
+  await win.waitForTimeout(200)
+  await win.selectOption('select[aria-label="Mover a un día"]', { index: 1 })
+  await win.waitForFunction(() => document.querySelectorAll('.day-bar button').length > 0 &&
+    !document.querySelector('.day-bar button.active')?.textContent?.includes('Sin día'), null, { timeout: 10000 }).catch(() => {})
+  await win.click('.day-bar button:has-text("Preboda")')
+  await win.waitForTimeout(400)
+  check('evento: fotos movidas a un día', (await win.locator('.thumb').count()) === expectedPhotos, String(await win.locator('.thumb').count()))
+  await shot('evento-dias')
+
+  // Asignar fotos a pilotos.
+  await win.click('.thumb >> nth=0')
+  await win.click('.thumb >> nth=1', { modifiers: ['Control'] })
+  await win.keyboard.press('a')
+  await win.waitForSelector('.pilot-picker')
+  check('asignar: lista de pilotos', (await win.locator('.pilot-row').count()) >= 2, String(await win.locator('.pilot-row').count()))
+  await win.click('.pilot-row:has-text("Marc Pérez") button:has-text("Asignar")')
+  await win.waitForTimeout(500)
+  check('asignar: marcado como asignado', (await win.textContent('.pilot-row:has-text("Marc Pérez")')).includes('todas'),
+    await win.textContent('.pilot-row:has-text("Marc Pérez")'))
+  await win.click('.modal button:has-text("Hecho")')
+  await win.waitForTimeout(300)
+  check('asignar: distintivo en las miniaturas', (await win.locator('.thumb .pilot-badge').count()) === 2,
+    String(await win.locator('.thumb .pilot-badge').count()))
+  await shot('evento-pilotos')
+  // Filtro por piloto dentro del evento.
+  await win.selectOption('select[aria-label="Filtrar por piloto"]', { index: 1 })
+  await win.waitForTimeout(400)
+  check('asignar: filtro por piloto', (await win.locator('.thumb').count()) === 2, String(await win.locator('.thumb').count()))
+  await win.selectOption('select[aria-label="Filtrar por piloto"]', '0')
+
+  // Las fotos asignadas salen en la ficha del piloto.
+  await win.click('nav >> text=Clientes')
+  await win.click('tr:has(strong:text-is("Marc Pérez"))')
+  await win.waitForSelector('.client-page')
+  check('ficha del piloto: fotos asignadas', (await win.locator('.client-activity .photo-result').count()) === 2,
+    String(await win.locator('.client-activity .photo-result').count()))
+  check('ficha del piloto: título', (await win.textContent('.client-activity')).includes('Fotos asignadas'))
+  await shot('ficha-piloto-fotos')
 
   // --- Panel ---
   await win.click('nav >> text=Panel'); await win.waitForTimeout(500)

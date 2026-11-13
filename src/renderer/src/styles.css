@@ -328,3 +328,16 @@ label.check input { width: auto; margin: 0; accent-color: var(--accent); }
 .kind-picker.two { grid-template-columns: repeat(2, 1fr); }
 .kind-circuito { background: #33383e; color: #c6d2dc; }
 .kind-organizador { background: #3a3630; color: #ddd0bb; }
+
+/* ---------- Días del evento y pilotos ---------- */
+.day-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.day-bar .segmented { flex-wrap: wrap; }
+.pilot-badge { position: absolute; bottom: 6px; left: 6px; background: rgba(38,128,235,.9); color: #fff; font-size: 10px; font-weight: 700;
+  letter-spacing: .04em; padding: 2px 6px; border-radius: 2px; max-width: calc(100% - 12px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.thumb .pilot-badge { bottom: 56px; left: 14px; }
+.pilot-picker { display: flex; flex-direction: column; gap: 2px; max-height: 46vh; overflow: auto; }
+.pilot-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: var(--radius); }
+.pilot-row:hover { background: var(--panel-2); }
+.pilot-row.on { background: #2e3440; }
+.pilot-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }

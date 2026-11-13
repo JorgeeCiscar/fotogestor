@@ -21,7 +21,7 @@ export type View =
   | { name: 'contacts' }
   | { name: 'contact'; id: number }
   | { name: 'sessions'; clientId?: number; create?: boolean }
-  | { name: 'library'; clientId?: number }
+  | { name: 'library'; clientId?: number; pilotId?: number }
   | { name: 'session'; id: number; photoId?: number }
   | { name: 'search'; q?: string }
   | { name: 'invoices'; openId?: number; newForSession?: number; newForClient?: number }
@@ -30,7 +30,7 @@ export type View =
 
 const NAV: [View['name'], string][] = [
   ['dashboard', 'Panel'],
-  ['sessions', 'Sesiones'],
+  ['sessions', 'Eventos'],
   ['library', 'Fotos'],
   ['clients', 'Clientes'],
   ['contacts', 'Contactos'],
@@ -77,7 +77,7 @@ export default function App() {
         {view.name === 'contacts' && <ContactsView nav={nav} />}
         {view.name === 'contact' && <ContactDetail key={view.id} id={view.id} nav={nav} />}
         {view.name === 'sessions' && <SessionsView nav={nav} clientId={view.clientId} create={view.create} />}
-        {view.name === 'library' && <LibraryView key={view.clientId ?? 0} nav={nav} clientId={view.clientId} />}
+        {view.name === 'library' && <LibraryView key={`${view.clientId ?? 0}-${view.pilotId ?? 0}`} nav={nav} clientId={view.clientId} pilotId={view.pilotId} />}
         {view.name === 'session' && <SessionDetail key={view.id} id={view.id} photoId={view.photoId} nav={nav} />}
         {view.name === 'search' && <SearchView nav={nav} initial={view.q} />}
         {view.name === 'invoices' && <InvoicesView nav={nav} openId={view.openId} newForSession={view.newForSession} newForClient={view.newForClient} />}

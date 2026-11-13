@@ -56,8 +56,8 @@ export const DEFAULT_TARIFFS: TariffInput[] = [
     label: 'Foto extra', price: 2, unit: 'por foto',
     notes: 'Sobre las 25 incluidas por piloto y día.'
   },
-  { category: 'extra', mode: 'fijo', session_type: null, label: 'Vídeo horizontal · piloto', price: 50, unit: 'por sesión', notes: 'Resumen del fin de semana.' },
-  { category: 'extra', mode: 'fijo', session_type: null, label: 'Vídeo horizontal · equipo', price: 80, unit: 'por sesión', notes: 'Resumen del fin de semana.' },
+  { category: 'extra', mode: 'fijo', session_type: null, label: 'Vídeo horizontal · piloto', price: 50, unit: 'por evento', notes: 'Resumen del fin de semana.' },
+  { category: 'extra', mode: 'fijo', session_type: null, label: 'Vídeo horizontal · equipo', price: 80, unit: 'por evento', notes: 'Resumen del fin de semana.' },
 
   // --- Desplazamiento ---
   {

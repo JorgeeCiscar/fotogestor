@@ -2,7 +2,7 @@ import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { copyFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { SQLInputValue } from 'node:sqlite'
-import type { ClientInput, Photo, PhotoPatch, SessionInput, SessionStatus, TariffInput, TariffMode } from '../shared/types'
+import type { ClientInput, EventDayInput, Photo, PhotoPatch, SessionInput, SessionStatus, TariffInput, TariffMode } from '../shared/types'
 import { CLIENT_KINDS, PILOT_FIELDS, RACE_TYPE, SESSION_STATUSES, TEAM_FIELDS } from '../shared/types'
 import { transaction, type DB } from './db'
 import { CONTACT_SELECT, registerContactsIpc, findCircuitByName } from './contacts'
@@ -30,6 +30,29 @@ export const SESSION_SELECT = `
 export const PHOTO_SELECT = `
   SELECT p.*, (SELECT group_concat(t.tag, char(31)) FROM photo_tags t WHERE t.photo_id = p.id) AS tags_raw
   FROM photos p`
+
+/** Pilotos asignados a cada foto, agrupados por foto. */
+export function pilotsByPhoto(db: DB, photoIds: number[]): Map<number, { id: number; name: string; racing_number: string | null }[]> {
+  const out = new Map<number, { id: number; name: string; racing_number: string | null }[]>()
+  if (!photoIds.length) return out
+  const rows = db.prepare(`SELECT pp.photo_id, c.id, c.name, c.racing_number
+    FROM photo_pilots pp JOIN clients c ON c.id = pp.client_id
+    WHERE pp.photo_id IN (${photoIds.map(() => '?').join(',')})
+    ORDER BY CAST(c.racing_number AS INTEGER), c.name COLLATE NOCASE`).all(...photoIds) as
+    { photo_id: number; id: number; name: string; racing_number: string | null }[]
+  for (const r of rows) {
+    const list = out.get(r.photo_id) ?? []
+    list.push({ id: r.id, name: r.name, racing_number: r.racing_number })
+    out.set(r.photo_id, list)
+  }
+  return out
+}
+
+/** Añade a cada foto sus pilotos (una sola consulta para todas). */
+export function withPilots<T extends { id: number }>(db: DB, photos: T[]): (T & { pilots: unknown[] })[] {
+  const map = pilotsByPhoto(db, photos.map((p) => p.id))
+  return photos.map((p) => ({ ...p, pilots: map.get(p.id) ?? [] }))
+}
 
 type Row = Record<string, unknown>
 /** Convierte la columna tags_raw en un array ordenado. */
@@ -184,9 +207,55 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
   })
 
   // ---------- Fotos ----------
-  ipcMain.handle('photos:list', (_e, sessionId: number) =>
-    db.prepare(`${PHOTO_SELECT} WHERE p.session_id = ? ORDER BY p.taken_at IS NULL, p.taken_at, p.file_name`).all(sessionId).map((r) => withTags(r))
-  )
+  ipcMain.handle('photos:list', (_e, sessionId: number) => {
+    const rows = db.prepare(`${PHOTO_SELECT} WHERE p.session_id = ? ORDER BY p.taken_at IS NULL, p.taken_at, p.file_name`)
+      .all(sessionId).map((r) => withTags(r)) as { id: number }[]
+    return withPilots(db, rows)
+  })
+
+  // ---------- Días del evento ----------
+  ipcMain.handle('days:list', (_e, sessionId: number) =>
+    db.prepare(`SELECT d.*, (SELECT COUNT(*) FROM photos p WHERE p.day_id = d.id) AS photo_count
+                FROM event_days d WHERE d.session_id = ?
+                ORDER BY d.date IS NULL, d.date, d.position, d.id`).all(sessionId))
+  ipcMain.handle('days:save', (_e, d: EventDayInput) => {
+    if (!d.session_id) throw new Error('Falta el evento')
+    if (!d.date && !d.label?.trim()) throw new Error('Pon al menos la fecha o un nombre para el día')
+    if (d.date && !/^\d{4}-\d{2}-\d{2}$/.test(d.date)) throw new Error('Fecha no válida')
+    const row = { session_id: d.session_id, date: nullIfEmpty(d.date), label: nullIfEmpty(d.label) }
+    let id = d.id
+    if (id) {
+      db.prepare('UPDATE event_days SET date=@date, label=@label WHERE id=@id').run({ date: row.date, label: row.label, id })
+    } else {
+      const next = Number((db.prepare('SELECT COALESCE(MAX(position), 0) + 1 AS n FROM event_days WHERE session_id = ?').get(d.session_id) as { n: number }).n)
+      id = Number(db.prepare('INSERT INTO event_days (session_id, date, label, position) VALUES (@session_id, @date, @label, @position)')
+        .run({ ...row, position: next }).lastInsertRowid)
+    }
+    return db.prepare('SELECT * FROM event_days WHERE id = ?').get(id)
+  })
+  ipcMain.handle('days:remove', (_e, id: number) => {
+    // Las fotos de ese día se quedan en el evento, sin día asignado.
+    transaction(db, () => {
+      db.prepare('UPDATE photos SET day_id = NULL WHERE day_id = ?').run(id)
+      db.prepare('DELETE FROM event_days WHERE id = ?').run(id)
+    })
+  })
+
+  // ---------- Fotos y pilotos ----------
+  ipcMain.handle('photos:assign', (_e, ids: number[], clientId: number, assign: boolean) => {
+    if (!ids.length || !clientId) return
+    const client = db.prepare('SELECT kind FROM clients WHERE id = ?').get(clientId) as { kind: string } | undefined
+    if (!client) throw new Error('El piloto no existe')
+    const stmt = assign
+      ? db.prepare('INSERT OR IGNORE INTO photo_pilots (photo_id, client_id) VALUES (?, ?)')
+      : db.prepare('DELETE FROM photo_pilots WHERE photo_id = ? AND client_id = ?')
+    transaction(db, () => ids.forEach((id) => stmt.run(id, clientId)))
+  })
+  ipcMain.handle('photos:setDay', (_e, ids: number[], dayId: number | null) => {
+    if (!ids.length) return
+    const stmt = db.prepare('UPDATE photos SET day_id = ? WHERE id = ?')
+    transaction(db, () => ids.forEach((id) => stmt.run(dayId, id)))
+  })
   ipcMain.handle('photos:update', (_e, ids: number[], patch: PhotoPatch) => {
     const sets: string[] = []
     const params: Record<string, SQLInputValue> = {}
@@ -225,7 +294,7 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
       await Promise.all([p.original_key, p.thumb_key, p.preview_key].map((k) => storage.remove(k)))
     }
   })
-  ipcMain.handle('photos:import', async (e, sessionId: number) => {
+  ipcMain.handle('photos:import', async (e, sessionId: number, dayId?: number | null) => {
     const win = BrowserWindow.fromWebContents(e.sender)!
     const res = await dialog.showOpenDialog(win, {
       title: 'Importar fotografías',
@@ -237,7 +306,7 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
     })
     if (res.canceled || !res.filePaths.length) return null
     const files = await collectFiles(res.filePaths)
-    return importPhotos(db, storage, sessionId, files, (p) => e.sender.send('photos:import-progress', p))
+    return importPhotos(db, storage, sessionId, dayId ?? null, files, (p) => e.sender.send('photos:import-progress', p))
   })
   ipcMain.handle('photos:exportPicks', async (e, sessionId: number) => {
     const picks = db.prepare("SELECT * FROM photos WHERE session_id = ? AND flag = 'pick' ORDER BY file_name").all(sessionId) as unknown as Photo[]

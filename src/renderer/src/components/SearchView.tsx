@@ -20,7 +20,7 @@ export default function SearchView({ nav, initial = '' }: { nav: (v: View) => vo
   return (
     <div className="page">
       <header className="page-header"><h1>Buscar</h1></header>
-      <input className="search-big" autoFocus placeholder="Clientes, sesiones, lugares, etiquetas, nombres de archivo, cámara, objetivo…"
+      <input className="search-big" autoFocus placeholder="Clientes, eventos, lugares, etiquetas, nombres de archivo, cámara, objetivo…"
         value={q} onChange={(e) => setQ(e.target.value)} />
       {!q.trim() && tags.length > 0 && (
         <>
@@ -36,7 +36,7 @@ export default function SearchView({ nav, initial = '' }: { nav: (v: View) => vo
             {res.clients.map((c) => (
               <button key={c.id} className="result" onClick={() => nav({ name: 'client', id: c.id })}>
                 <strong>{c.name}</strong>
-                <span className="muted small">{[c.email, c.phone].filter(Boolean).join(' · ')} · {c.session_count ?? 0} sesiones</span>
+                <span className="muted small">{[c.email, c.phone].filter(Boolean).join(' · ')} · {c.session_count ?? 0} eventos</span>
               </button>
             ))}
           </div>
@@ -59,7 +59,7 @@ export default function SearchView({ nav, initial = '' }: { nav: (v: View) => vo
       )}
       {res && res.sessions.length > 0 && (
         <>
-          <h2>Sesiones ({res.sessions.length})</h2>
+          <h2>Eventos ({res.sessions.length})</h2>
           <div className="card-grid">
             {res.sessions.map((s) => <SessionCard key={s.id} s={s} onOpen={() => nav({ name: 'session', id: s.id })} />)}
           </div>

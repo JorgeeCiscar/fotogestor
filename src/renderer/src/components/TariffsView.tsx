@@ -3,7 +3,7 @@ import { DEFAULT_TARIFFS } from '../../../shared/defaultTariffs'
 import type { Tariff, TariffCategory, TariffInput, TariffMode } from '../../../shared/types'
 import { api, errorMessage, formatMoney, SESSION_TYPES } from '../util'
 
-const UNITS = ['por sesión', 'por hora', 'por día', 'por foto', 'por piloto', 'por álbum', 'por km']
+const UNITS = ['por evento', 'por hora', 'por día', 'por foto', 'por piloto', 'por álbum', 'por km']
 
 const emptyRow = (category: TariffCategory): TariffInput =>
   ({ category, mode: 'fijo', session_type: '', label: '', price: 0, unit: category === 'sesion' ? 'por sesión' : '', notes: '' })
@@ -59,7 +59,7 @@ function TariffRow({ tariff, isNew, onSave, onRemove, onCancel }: {
           onChange={(e) => set('price', e.target.value as unknown as number)} onBlur={commit} /> {row.mode === 'porcentaje' ? '%' : '€'}
       </td>
       <td>
-        <input list="tariff-units" value={row.unit ?? ''} onChange={(e) => set('unit', e.target.value)} onBlur={commit} placeholder="por sesión" />
+        <input list="tariff-units" value={row.unit ?? ''} onChange={(e) => set('unit', e.target.value)} onBlur={commit} placeholder="por evento" />
       </td>
       <td><input value={row.notes ?? ''} onChange={(e) => set('notes', e.target.value)} onBlur={commit} placeholder="Opcional" /></td>
       <td className="actions">
@@ -75,7 +75,7 @@ function TariffRow({ tariff, isNew, onSave, onRemove, onCancel }: {
   )
 }
 
-/** Lista de precios: tarifa por tipo de sesión y extras que se suman a ella. */
+/** Lista de precios: tarifa por tipo de evento y extras que se suman a ella. */
 export default function TariffsView() {
   const [tariffs, setTariffs] = useState<Tariff[]>([])
   const [draft, setDraft] = useState<TariffInput | null>(null)
@@ -94,7 +94,7 @@ export default function TariffsView() {
   }
 
   async function remove(t: Tariff) {
-    if (!confirm(`¿Eliminar la tarifa «${t.label}»? Las sesiones ya creadas conservan su precio.`)) return
+    if (!confirm(`¿Eliminar la tarifa «${t.label}»? Los eventos ya creados conservan su precio.`)) return
     await api.tariffs.remove(t.id)
     load()
   }
@@ -109,7 +109,7 @@ export default function TariffsView() {
         <table className="table tariffs">
           <thead>
             <tr>
-              {category === 'sesion' && <th>Tipo de sesión</th>}
+              {category === 'sesion' && <th>Tipo de evento</th>}
               <th>Concepto</th>
               {category === 'extra' && <th>Tipo</th>}
               <th className="n">Precio</th>
@@ -127,7 +127,7 @@ export default function TariffsView() {
           </tbody>
         </table>
         <button className="ghost" onClick={() => setDraft(emptyRow(category))} disabled={!!draft}>
-          + Añadir {category === 'sesion' ? 'tipo de sesión' : 'extra'}
+          + Añadir {category === 'sesion' ? 'tipo de evento' : 'extra'}
         </button>
       </section>
     )
@@ -150,8 +150,8 @@ export default function TariffsView() {
         {base.length > 0 && <span className="muted small">Desde {formatMoney(Math.min(...base.map((t) => t.price)))}</span>}
       </header>
       <p className="muted">
-        Tus precios habituales. Al crear una sesión se aplica sola la tarifa de su tipo y puedes añadirle extras;
-        de ahí salen el precio de la sesión y las partidas del presupuesto.
+        Tus precios habituales. Al crear un evento se aplica sola la tarifa de su tipo y puedes añadirle extras;
+        de ahí salen el precio del evento y las partidas del presupuesto.
       </p>
       {error && <p className="error">{error}</p>}
       {!tariffs.length && (
@@ -165,10 +165,10 @@ export default function TariffsView() {
           <button className="primary" onClick={loadDefaults}>Cargar {DEFAULT_TARIFFS.length} tarifas</button>
         </div>
       )}
-      {section('sesion', 'Precio por tipo de sesión',
-        'Se aplica automáticamente al elegir el tipo al crear una sesión. Deja el tipo en «Cualquiera» para una tarifa general.')}
+      {section('sesion', 'Precio por tipo de evento',
+        'Se aplica automáticamente al elegir el tipo al crear un evento. Deja el tipo en «Cualquiera» para una tarifa general.')}
       {section('extra', 'Extras',
-        'Se añaden a mano en cada sesión: álbumes, revelado extra, desplazamiento, urgencia…')}
+        'Se añaden a mano en cada evento: álbumes, revelado extra, desplazamiento, urgencia…')}
       <datalist id="tariff-units">{UNITS.map((u) => <option key={u} value={u} />)}</datalist>
     </div>
   )

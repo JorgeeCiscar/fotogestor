@@ -35,7 +35,7 @@ export default function PasteDataDialog({ target, onClose, onApply }: {
     <Modal title="Pegar datos" onClose={onClose} wide>
       <div className="form paste-dialog">
         <p className="muted">
-          Pega aquí el correo, el mensaje o la ficha con los datos{target === 'client' ? ' del cliente' : ' de la sesión'}.
+          Pega aquí el correo, el mensaje o la ficha con los datos{target === 'client' ? ' del cliente' : ' del evento'}.
           Se reconocen solos y puedes revisarlos antes de aplicarlos.
         </p>
         <textarea autoFocus rows={10} value={text} onChange={(e) => setText(e.target.value)}

@@ -58,7 +58,7 @@ export default function InvoicesView({ openId, newForSession, newForClient }: { 
       {msg && <p className="muted">{msg}</p>}
       {invoices.length ? (
         <table className="table">
-          <thead><tr><th>Número</th><th>Tipo</th><th>Cliente</th><th>Sesión</th><th>Fecha</th><th className="n">Total</th><th>Estado</th><th /></tr></thead>
+          <thead><tr><th>Número</th><th>Tipo</th><th>Cliente</th><th>Evento</th><th>Fecha</th><th className="n">Total</th><th>Estado</th><th /></tr></thead>
           <tbody>
             {invoices.map((i) => (
               <tr key={i.id} className="clickable" onClick={() => setEditing(toDraft(i))}>

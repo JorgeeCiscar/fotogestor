@@ -22,7 +22,7 @@ export default function ContactsView({ nav }: { nav: (v: View) => void }) {
       .some((v) => v?.toLowerCase().includes(needle)))
 
   async function remove(c: Contact) {
-    if (!confirm(`¿Eliminar «${c.name}»? Las sesiones que lo usan conservan su lugar escrito.`)) return
+    if (!confirm(`¿Eliminar «${c.name}»? Los eventos que lo usan conservan su lugar escrito.`)) return
     try { await api.contacts.remove(c.id); load() } catch (err) { alert(errorMessage(err)) }
   }
 
@@ -33,7 +33,7 @@ export default function ContactsView({ nav }: { nav: (v: View) => void }) {
         <input className="search" placeholder="Buscar circuito, organizador, prensa…" value={q} onChange={(e) => setQ(e.target.value)} />
         <button className="primary" onClick={() => setEditing('new')}>+ Nuevo contacto</button>
       </header>
-      <p className="muted">Circuitos y organizadores: acreditaciones, acceso y a quién escribir. Se enlazan solos con el lugar de cada sesión.</p>
+      <p className="muted">Circuitos y organizadores: acreditaciones, acceso y a quién escribir. Se enlazan solos con el lugar de cada evento.</p>
       <div className="toolbar">
         <div className="segmented">
           {([['all', 'Todos'], ['circuito', '🏁 Circuitos'], ['organizador', '🏆 Organizadores']] as [Tab, string][]).map(([t, label]) => (
@@ -43,7 +43,7 @@ export default function ContactsView({ nav }: { nav: (v: View) => void }) {
       </div>
       {filtered.length ? (
         <table className="table">
-          <thead><tr><th>Nombre</th><th>Tipo</th><th>Acreditaciones</th><th>Contacto</th><th>Sesiones</th><th /></tr></thead>
+          <thead><tr><th>Nombre</th><th>Tipo</th><th>Acreditaciones</th><th>Contacto</th><th>Eventos</th><th /></tr></thead>
           <tbody>
             {filtered.map((c) => (
               <tr key={c.id} className="clickable" onClick={() => nav({ name: 'contact', id: c.id })}>

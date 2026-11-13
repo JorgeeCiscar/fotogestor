@@ -13,8 +13,11 @@ const api: Api = {
   sessions: {
     list: invoke('sessions:list'), get: invoke('sessions:get'), save: invoke('sessions:save'), remove: invoke('sessions:remove')
   },
+  days: { list: invoke('days:list'), save: invoke('days:save'), remove: invoke('days:remove') },
   photos: {
     list: invoke('photos:list'),
+    assign: invoke('photos:assign'),
+    setDay: invoke('photos:setDay'),
     update: invoke('photos:update'),
     remove: invoke('photos:remove'),
     importFiles: invoke('photos:import'),

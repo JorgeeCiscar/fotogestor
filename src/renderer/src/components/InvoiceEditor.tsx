@@ -11,11 +11,11 @@ export function newDraft(kind: InvoiceKind, taxRate: number, irpfRate: number, s
   return {
     kind, status: 'borrador', client_id: session?.client_id ?? null, session_id: session?.id ?? null,
     issue_date: today(), due_date: due.toLocaleDateString('sv-SE'), tax_rate: taxRate, irpf_rate: irpfRate, notes: '',
-    // Si la sesión tiene partidas (tarifa + extras), se copian tal cual.
+    // Si el evento tiene partidas (tarifa + extras), se copian tal cual.
     items: session?.items?.length
       ? session.items.map(({ description, quantity, unit_price }) => ({ description, quantity, unit_price }))
       : [{
-          description: session ? `Sesión fotográfica${session.type ? ' de ' + session.type.toLowerCase() : ''}: ${session.title}` : '',
+          description: session ? `Cobertura fotográfica${session.type ? ' de ' + session.type.toLowerCase() : ''}: ${session.title}` : '',
           quantity: 1,
           unit_price: session?.price ?? 0
         }]
@@ -85,7 +85,7 @@ export default function InvoiceEditor({ initial, onClose, onSaved, onOpen }: {
           </label>
           <label>Sesión
             <select disabled={locked} value={form.session_id ?? ''} onChange={(e) => set('session_id', e.target.value ? Number(e.target.value) : null)}>
-              <option value="">— Ninguna —</option>
+              <option value="">— Ninguno —</option>
               {clientSessions.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
             </select>
           </label>
