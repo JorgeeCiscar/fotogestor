@@ -14,6 +14,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.15.0',
+    date: '2026-11-13',
+    title: 'Trabajar sobre la carpeta',
+    changes: [
+      'En vez de importar, ahora abres la carpeta de la tarjeta y ves sus fotos dentro de la app.',
+      'Eliges las que quieras y las añades al evento ya etiquetadas con el día, el piloto y la prueba (Prácticas, Clasificaciones, Heat, Carrera o Box).',
+      'Por defecto no se copia nada: los originales se quedan en su carpeta y la app solo guarda dónde están. Si prefieres copiarlos a la biblioteca, hay una casilla para ello.',
+      'Las fotos ya añadidas aparecen marcadas en la carpeta, para no repetirlas.',
+      'Filtro por formato (JPEG, PNG, RAW de cada marca…) en la carpeta, en el evento y en Fotos.',
+      'El tipo de prueba se ve en la miniatura, se cambia desde el visor y sirve para filtrar.'
+    ]
+  },
+  {
     version: '0.14.0',
     date: '2026-11-13',
     title: 'Galería por piloto y tarifas más finas',

@@ -3,15 +3,16 @@ import { copyFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { SQLInputValue } from 'node:sqlite'
 import type { ClientInput, EventDayInput, Photo, PhotoPatch, SessionInput, SessionStatus, TariffInput, TariffMode } from '../shared/types'
-import { CLIENT_KINDS, PILOT_FIELDS, RACE_TYPE, SESSION_STATUSES, TEAM_FIELDS } from '../shared/types'
+import { CLIENT_KINDS, PILOT_FIELDS, RACE_TYPE, RUN_TYPES, SESSION_STATUSES, TEAM_FIELDS } from '../shared/types'
 import { transaction, type DB } from './db'
 import { CONTACT_SELECT, registerContactsIpc, findCircuitByName } from './contacts'
+import { registerFolderIpc } from './folder'
 import { registerGalleryIpc } from './gallery'
 import { collectFiles, importPhotos, SUPPORTED_EXT } from './importer'
 import { registerInvoiceIpc } from './invoices'
 import { registerLibraryIpc } from './library'
 import { registerSettingsIpc } from './settings'
-import { LocalStorage, sessionKey } from './storage'
+import { LocalStorage, originalPath, sessionKey } from './storage'
 
 const SEP = String.fromCharCode(31) // separador para group_concat de etiquetas
 
@@ -270,6 +271,10 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
       if (![null, 'pick', 'reject'].includes(patch.flag)) throw new Error('Marca no válida')
       sets.push('flag = @flag'); params.flag = patch.flag
     }
+    if (patch.run_type !== undefined) {
+      if (patch.run_type !== null && !RUN_TYPES.includes(patch.run_type as (typeof RUN_TYPES)[number])) throw new Error('Tipo de prueba no válido')
+      sets.push('run_type = @run_type'); params.run_type = patch.run_type
+    }
     if (patch.client_pick !== undefined) {
       sets.push('client_pick = @client_pick'); params.client_pick = patch.client_pick ? 1 : 0
     }
@@ -294,7 +299,9 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
       const p = get.get(id) as unknown as Photo | undefined
       if (!p) continue
       del.run(id)
-      await Promise.all([p.original_key, p.thumb_key, p.preview_key].map((k) => storage.remove(k)))
+      // De las enlazadas solo se borran las miniaturas: el original es del usuario.
+      const keys = p.external_path ? [p.thumb_key, p.preview_key] : [p.original_key, p.thumb_key, p.preview_key]
+      await Promise.all(keys.filter(Boolean).map((k) => storage.remove(k)))
     }
   })
   ipcMain.handle('photos:import', async (e, sessionId: number, dayId?: number | null) => {
@@ -319,12 +326,13 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
     if (res.canceled || !res.filePaths[0]) return null
     const folder = res.filePaths[0]
     await mkdir(folder, { recursive: true })
-    for (const p of picks) await copyFile(storage.resolve(p.original_key), join(folder, p.original_key.split('/').pop()!))
+    for (const p of picks) await copyFile(originalPath(storage, p), join(folder, p.file_name))
     return { exported: picks.length, folder }
   })
   ipcMain.handle('photos:reveal', (_e, id: number) => {
-    const p = db.prepare('SELECT original_key FROM photos WHERE id = ?').get(id) as { original_key: string } | undefined
-    if (p) shell.showItemInFolder(storage.resolve(p.original_key))
+    const p = db.prepare('SELECT original_key, external_path FROM photos WHERE id = ?').get(id) as
+      { original_key: string; external_path: string | null } | undefined
+    if (p) shell.showItemInFolder(originalPath(storage, p))
   })
 
   // ---------- Tarifas ----------
@@ -365,6 +373,10 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
     db.prepare(`SELECT tag FROM (SELECT tag FROM photo_tags UNION SELECT tag FROM session_tags) ORDER BY tag COLLATE NOCASE`)
       .all().map((r) => String(r.tag))
   )
+  ipcMain.handle('formats', () =>
+    db.prepare(`SELECT ext, COUNT(*) AS n FROM photos WHERE ext IS NOT NULL AND ext <> ''
+                GROUP BY ext ORDER BY n DESC, ext`).all())
+
   ipcMain.handle('search', (_e, q: string) => {
     const term = q.trim()
     if (!term) return { clients: [], contacts: [], sessions: [], photos: [] }
@@ -418,4 +430,5 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
   registerGalleryIpc(db, storage)
   registerLibraryIpc(db, storage)
   registerContactsIpc(db)
+  registerFolderIpc(db, storage)
 }

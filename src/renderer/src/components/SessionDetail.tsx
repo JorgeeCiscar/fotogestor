@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { EventDay, Flag, ImportProgress, Photo, PhotoPatch, Session } from '../../../shared/types'
+import { RUN_TYPES } from '../../../shared/types'
 import type { View } from '../App'
-import { api, dayLabel, errorMessage, formatDate, formatMoney, STATUS_LABEL } from '../util'
+import { api, dayLabel, errorMessage, formatDate, formatLabel, formatMoney, STATUS_LABEL } from '../util'
 import DayForm from './DayForm'
+import FolderBrowser from './FolderBrowser'
 import PilotAssignDialog from './PilotAssignDialog'
 import { BulkTagDialog, GalleryDialog, SelectionDialog } from './SessionDialogs'
 import SessionForm from './SessionForm'
@@ -10,7 +12,7 @@ import Stars from './Stars'
 import TagInput from './TagInput'
 
 type Filter = 'all' | 'pick' | 'reject' | 'none' | 'rated' | 'client'
-type Dialog = 'edit' | 'gallery' | 'selection' | 'tag' | 'pilots' | 'day' | null
+type Dialog = 'edit' | 'gallery' | 'selection' | 'tag' | 'pilots' | 'day' | 'folder' | null
 /** Día activo: null = todas las fotos, 'none' = las que no tienen día. */
 type ActiveDay = number | 'none' | null
 
@@ -20,6 +22,8 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
   const [filter, setFilter] = useState<Filter>('all')
   const [tagFilter, setTagFilter] = useState('')
   const [pilotFilter, setPilotFilter] = useState(0)
+  const [runFilter, setRunFilter] = useState('')
+  const [extFilter, setExtFilter] = useState('')
   const [days, setDays] = useState<EventDay[]>([])
   const [activeDay, setActiveDay] = useState<ActiveDay>(null)
   const [editingDay, setEditingDay] = useState<EventDay | undefined>()
@@ -57,12 +61,20 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
     }
     return [...m.values()].sort((a, b) => a.name.localeCompare(b.name))
   }, [photos])
+  /** Formatos presentes en el evento, con su número de fotos. */
+  const eventFormats = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const p of photos) if (p.ext) m.set(p.ext, (m.get(p.ext) ?? 0) + 1)
+    return [...m.entries()].sort((a, b) => b[1] - a[1])
+  }, [photos])
   const withoutDay = useMemo(() => photos.filter((p) => p.day_id === null).length, [photos])
 
   const allTags = useMemo(() => [...new Set(photos.flatMap((p) => p.tags))].sort((a, b) => a.localeCompare(b)), [photos])
   const visible = useMemo(() => photos.filter((p) => {
     if (activeDay === 'none' ? p.day_id !== null : activeDay !== null && p.day_id !== activeDay) return false
     if (pilotFilter && !p.pilots.some((x) => x.id === pilotFilter)) return false
+    if (runFilter && p.run_type !== runFilter) return false
+    if (extFilter && (extFilter === 'raw' ? p.is_raw !== 1 : p.ext !== extFilter)) return false
     if (tagFilter && !p.tags.includes(tagFilter)) return false
     switch (filter) {
       case 'pick': return p.flag === 'pick'
@@ -72,7 +84,7 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
       case 'client': return p.client_pick === 1
       default: return true
     }
-  }), [photos, filter, tagFilter, pilotFilter, activeDay])
+  }), [photos, filter, tagFilter, pilotFilter, runFilter, extFilter, activeDay])
 
   const current = visible[Math.min(focus, visible.length - 1)]
   const counts = useMemo(() => ({
@@ -307,6 +319,19 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
             {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         )}
+        {eventFormats.length > 1 && (
+          <select value={extFilter} onChange={(e) => { setExtFilter(e.target.value); setFocus(0); setSelected(new Set()) }} aria-label="Filtrar por formato">
+            <option value="">Todos los formatos</option>
+            {photos.some((p) => p.is_raw === 1) && <option value="raw">Solo RAW</option>}
+            {eventFormats.map(([ext, n]) => <option key={ext} value={ext}>{formatLabel(ext)} ({n})</option>)}
+          </select>
+        )}
+        {photos.some((p) => p.run_type) && (
+          <select value={runFilter} onChange={(e) => { setRunFilter(e.target.value); setFocus(0); setSelected(new Set()) }} aria-label="Filtrar por prueba">
+            <option value="">Todas las pruebas</option>
+            {RUN_TYPES.filter((r) => photos.some((p) => p.run_type === r)).map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        )}
         {eventPilots.length > 0 && (
           <select value={pilotFilter} onChange={(e) => { setPilotFilter(Number(e.target.value)); setFocus(0); setSelected(new Set()) }} aria-label="Filtrar por piloto">
             <option value={0}>Todos los pilotos</option>
@@ -329,18 +354,23 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
         <button onClick={() => setDialog('gallery')} disabled={!photos.length}>Galería cliente</button>
         <button onClick={() => setDialog('selection')} disabled={!photos.length}>Importar selección</button>
         <button onClick={doExport} disabled={!counts.pick}>Exportar elegidas</button>
-        <button className="primary" onClick={doImport} disabled={importing}>
-          {importing ? (progress ? `Importando ${progress.done}/${progress.total}…` : 'Importando…') : '+ Importar fotos'}
+        <button className="ghost" onClick={doImport} disabled={importing} title="Copia los archivos elegidos dentro de la biblioteca">
+          {importing ? (progress ? `Copiando ${progress.done}/${progress.total}…` : 'Copiando…') : 'Copiar archivos…'}
         </button>
+        <button className="primary" onClick={() => setDialog('folder')}>+ Añadir fotos</button>
       </div>
 
       {photos.length === 0 ? (
         <div className="dropzone">
           <p>Este evento aún no tiene fotos.</p>
-          <button className="primary" onClick={doImport} disabled={importing}>
-            {importing ? (progress ? `Importando ${progress.done}/${progress.total}…` : 'Importando…') : 'Importar fotos o una carpeta'}
+          <button className="primary" onClick={() => setDialog('folder')}>Abrir la carpeta de las fotos</button>
+          <p className="muted small">
+            Eliges la carpeta de la tarjeta, ves sus fotos y añades las que quieras ya etiquetadas con el piloto,
+            el día y la prueba. JPEG, PNG, TIFF, WebP y RAW (CR2, CR3, NEF, ARW, RAF, DNG…).
+          </p>
+          <button className="ghost" onClick={doImport} disabled={importing}>
+            {importing ? (progress ? `Copiando ${progress.done}/${progress.total}…` : 'Copiando…') : 'O copiar archivos sueltos a la biblioteca'}
           </button>
-          <p className="muted small">JPEG, PNG, TIFF, WebP y RAW (CR2, CR3, NEF, ARW, RAF, DNG, ORF, RW2…). Los originales se copian a la biblioteca sin modificarse.</p>
         </div>
       ) : (
         <div className="grid" ref={gridRef}>
@@ -350,6 +380,7 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
               onClick={(e) => clickThumb(e, i)} onDoubleClick={() => { setFocus(i); setViewer(true) }}>
               <img src={api.mediaUrl(p.thumb_key)} loading="lazy" alt={p.file_name} />
               {p.is_raw === 1 && <span className="raw-badge">RAW</span>}
+              {p.run_type && <span className="run-badge">{p.run_type}</span>}
               {p.pilots.length > 0 && (
                 <span className="pilot-badge" title={p.pilots.map((x) => x.name).join(', ')}>
                   {p.pilots.map((x) => x.racing_number || x.name.split(' ')[0]).join(' · ')}
@@ -385,6 +416,12 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
             <button className={current.client_pick ? 'client-on' : 'ghost'} onClick={() => patch([current.id], { client_pick: current.client_pick ? 0 : 1 })}>
               ♥ {current.client_pick ? 'Favorita del cliente' : 'Marcar como favorita del cliente'}
             </button>
+            <label className="viewer-run">Prueba
+              <select value={current.run_type ?? ''} onChange={(e) => patch(targets(), { run_type: e.target.value || null })}>
+                <option value="">— Sin indicar —</option>
+                {RUN_TYPES.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </label>
             <div>
               <div className="muted small" style={{ marginBottom: 4 }}>Pilotos</div>
               {current.pilots.length ? (
@@ -425,6 +462,10 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
           onClose={() => setDialog(null)} onDone={closeDialog} />
       )}
       {dialog === 'selection' && <SelectionDialog sessionId={id} onClose={() => setDialog(null)} onDone={(m) => { closeDialog(m); changeFilter('client', '') }} />}
+      {dialog === 'folder' && (
+        <FolderBrowser sessionId={id} days={days} defaultDayId={typeof activeDay === 'number' ? activeDay : null}
+          onClose={() => { setDialog(null); load() }} onAdded={(msg) => { setToast(msg); load() }} />
+      )}
       {dialog === 'pilots' && (
         <PilotAssignDialog photos={photos.filter((p) => targets().includes(p.id))}
           onClose={() => setDialog(null)} onChange={assignPilot} />

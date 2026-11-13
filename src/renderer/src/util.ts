@@ -73,3 +73,13 @@ export function dayLabel(d: { date: string | null; label: string | null }): stri
   if (d.label) parts.push(d.label)
   return parts.join(' · ') || 'Día'
 }
+
+const FORMAT_LABELS: Record<string, string> = {
+  jpg: 'JPEG', png: 'PNG', tif: 'TIFF', webp: 'WebP',
+  cr2: 'RAW Canon (CR2)', cr3: 'RAW Canon (CR3)', crw: 'RAW Canon (CRW)',
+  nef: 'RAW Nikon (NEF)', nrw: 'RAW Nikon (NRW)', arw: 'RAW Sony (ARW)',
+  raf: 'RAW Fujifilm (RAF)', dng: 'RAW DNG', orf: 'RAW Olympus (ORF)',
+  rw2: 'RAW Panasonic (RW2)', pef: 'RAW Pentax (PEF)', srw: 'RAW Samsung (SRW)'
+}
+/** Nombre visible de un formato: «cr3» → «RAW Canon (CR3)». */
+export const formatLabel = (ext: string): string => FORMAT_LABELS[ext] ?? ext.toUpperCase()

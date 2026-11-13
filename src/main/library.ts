@@ -5,7 +5,7 @@ import type { SQLInputValue } from 'node:sqlite'
 import type { CopyOptions, LibraryFilter, LibrarySort, Photo } from '../shared/types'
 import type { DB } from './db'
 import { like, withPilots, withTags } from './ipc'
-import type { LocalStorage } from './storage'
+import { originalPath, type LocalStorage } from './storage'
 
 const ORDER: Record<LibrarySort, string> = {
   date_desc: 'COALESCE(p.taken_at, s.date, p.created_at) DESC, p.id DESC',
@@ -31,7 +31,8 @@ function where(f: LibraryFilter): { sql: string; params: SQLInputValue[] } {
   else if (f.flag === 'none') w.push('p.flag IS NULL')
   else if (f.flag === 'client') w.push('p.client_pick = 1')
   if (f.minRating) { w.push('p.rating >= ?'); params.push(f.minRating) }
-  if (f.rawOnly) w.push('p.is_raw = 1')
+  if (f.ext === 'raw') w.push('p.is_raw = 1')
+  else if (f.ext) { w.push('p.ext = ?'); params.push(f.ext) }
   if (f.tag) { w.push('EXISTS (SELECT 1 FROM photo_tags t WHERE t.photo_id = p.id AND t.tag = ?)'); params.push(f.tag) }
   if (f.q?.trim()) {
     const q = like(f.q.trim())
@@ -95,7 +96,7 @@ export function registerLibraryIpc(db: DB, storage: LocalStorage): void {
       await mkdir(dir, { recursive: true })
       if (!taken.has(dir)) taken.set(dir, new Set())
       const name = await freeName(dir, p.file_name, taken.get(dir)!)
-      await copyFile(storage.resolve(p.original_key), join(dir, name))
+      await copyFile(originalPath(storage, p), join(dir, name))
       done++
       if (done % 5 === 0 || done === photos.length) e.sender.send('library:copy-progress', { done, total: photos.length })
     }
@@ -104,7 +105,7 @@ export function registerLibraryIpc(db: DB, storage: LocalStorage): void {
 
   // Arrastrar fotos seleccionadas fuera de la app (Explorador, escritorio, correo…).
   ipcMain.on('library:startDrag', (e, ids: number[]) => {
-    const files = loadPhotos(ids.slice(0, 500)).map((p) => storage.resolve(p.original_key))
+    const files = loadPhotos(ids.slice(0, 500)).map((p) => originalPath(storage, p))
     if (!files.length) return
     dragIcon ??= nativeImage.createFromDataURL(DRAG_ICON_URL)
     e.sender.startDrag({ file: files[0], files, icon: dragIcon })

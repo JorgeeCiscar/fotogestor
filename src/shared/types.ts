@@ -6,6 +6,10 @@ export const SESSION_STATUSES: SessionStatus[] = ['planificada', 'realizada', 'e
 
 export type Flag = 'pick' | 'reject' | null
 
+/** Tipos de prueba dentro de un día de carrera. */
+export const RUN_TYPES = ['Prácticas', 'Clasificaciones', 'Heat', 'Carrera', 'Box'] as const
+export type RunType = (typeof RUN_TYPES)[number]
+
 export type ClientKind = 'piloto' | 'equipo' | 'particular'
 export const CLIENT_KINDS: ClientKind[] = ['piloto', 'equipo', 'particular']
 
@@ -186,13 +190,40 @@ export interface Photo {
   /** 1 si el cliente la marcó como favorita en su galería. */
   client_pick: number
   is_raw: number
+  /** Formato del archivo en minúsculas: jpg, cr3, nef… */
+  ext: string | null
+  /** Ruta del original cuando la foto está enlazada (no copiada a la biblioteca). */
+  external_path: string | null
+  run_type: string | null
   day_id: number | null
   /** Pilotos que aparecen en la foto. */
   pilots: PilotRef[]
   tags: string[]
   created_at: string
 }
-export type PhotoPatch = Partial<Pick<Photo, 'rating' | 'flag' | 'client_pick'>>
+export type PhotoPatch = Partial<Pick<Photo, 'rating' | 'flag' | 'client_pick' | 'run_type'>>
+
+/** Una foto de la carpeta que se está mirando, todavía fuera del evento. */
+export interface FolderPhoto {
+  path: string
+  name: string
+  size: number
+  /** id de la foto si ya está en este evento. */
+  photo_id: number | null
+}
+export interface FolderListing {
+  folder: string
+  photos: FolderPhoto[]
+}
+export interface AddFromFolderOptions {
+  sessionId: number
+  paths: string[]
+  dayId: number | null
+  pilotId: number | null
+  runType: string | null
+  /** true copia los originales a la biblioteca; false los deja donde están. */
+  copy: boolean
+}
 
 export interface ImportProgress {
   sessionId: number
@@ -303,7 +334,8 @@ export interface LibraryFilter {
   minRating?: number
   tag?: string
   q?: string
-  rawOnly?: boolean
+  /** Formato: una extensión concreta («cr3») o «raw» para cualquier RAW. */
+  ext?: string
   sort?: LibrarySort
 }
 export type LibraryPhoto = Photo & { session_title: string; session_date: string | null; client_name: string | null }
@@ -323,6 +355,13 @@ export interface Api {
     get(id: number): Promise<Session | null>
     save(s: SessionInput): Promise<Session>
     remove(id: number): Promise<void>
+  }
+  folder: {
+    choose(sessionId: number): Promise<FolderListing | null>
+    reopen(folder: string, sessionId: number): Promise<FolderListing>
+    add(opts: AddFromFolderOptions): Promise<ImportResult>
+    thumbUrl(path: string): string
+    onProgress(cb: (p: ImportProgress) => void): () => void
   }
   days: {
     list(sessionId: number): Promise<EventDay[]>
@@ -361,6 +400,8 @@ export interface Api {
     remove(id: number): Promise<void>
   }
   tags(): Promise<string[]>
+  /** Formatos presentes en la biblioteca, con su número de fotos. */
+  formats(): Promise<{ ext: string; n: number }[]>
   championships(): Promise<string[]>
   search(q: string): Promise<SearchResults>
   gallery: {

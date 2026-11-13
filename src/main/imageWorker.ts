@@ -48,6 +48,13 @@ async function run(job: ImageJob): Promise<ImageJobResult> {
       const webp = await img.webp({ quality: 78 }).toBuffer()
       return { dataUrl: `data:image/webp;base64,${webp.toString('base64')}` }
     }
+    case 'thumb': {
+      // Miniatura de un archivo que aún no está en la biblioteca (RAW incluido).
+      const isRawFile = /\.(cr2|cr3|crw|nef|nrw|arw|srf|sr2|raf|dng|orf|rw2|pef|srw|x3f|3fr|iiq|erf|mef|mos|kdc|rwl)$/i.test(job.src)
+      const source: string | Buffer = isRawFile ? await readRawPreview(job.src) : job.src
+      await sharp(source).rotate().resize(420, 420, { fit: 'inside' }).webp({ quality: 72 }).toFile(job.dest)
+      return { ok: true }
+    }
     case 'logo': {
       const png = await sharp(job.src).resize(600, 300, { fit: 'inside', withoutEnlargement: true }).png().toBuffer()
       return { dataUrl: `data:image/png;base64,${png.toString('base64')}` }

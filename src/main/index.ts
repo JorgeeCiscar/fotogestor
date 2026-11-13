@@ -10,7 +10,8 @@ import { stopImageWorker } from './imageJobs'
 
 // Esquema propio para servir miniaturas/previsualizaciones de la biblioteca de forma segura.
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'foto', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }
+  { scheme: 'foto', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } },
+  { scheme: 'fotodir', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }
 ])
 
 const dataDir = process.env.FOTOGESTOR_DATA_DIR ?? join(app.getPath('userData'), 'biblioteca')

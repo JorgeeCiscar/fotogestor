@@ -47,3 +47,8 @@ export class LocalStorage implements PhotoStorage {
 
 export const sessionKey = (sessionId: number, ...parts: string[]): string =>
   join('sessions', String(sessionId), ...parts).split(sep).join('/')
+
+/** Ruta del original: dentro de la biblioteca o donde esté si la foto está enlazada. */
+export function originalPath(storage: LocalStorage, p: { original_key: string; external_path: string | null }): string {
+  return p.external_path ? p.external_path : storage.resolve(p.original_key)
+}

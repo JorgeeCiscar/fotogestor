@@ -155,12 +155,12 @@ function check(name, ok, detail = '') {
 
   // --- Importación (JPEG + RAW) ---
   await stubOpen(path.join(S, 'imgs'))
-  await win.click('.dropzone button')
+  await win.click('.dropzone button:has-text("copiar")')
   await win.waitForFunction((n) => document.querySelectorAll('.thumb img').length === n
     || /error|importadas/.test(document.querySelector('.toast')?.textContent ?? ''), expectedPhotos, { timeout: 60000 })
   check('importación', (await toast(`${expectedPhotos} importadas`)).includes(`${expectedPhotos} importadas`), await win.textContent('.toast'))
   if (process.env.E2E_RAW) check('distintivo RAW', (await win.locator('.raw-badge').count()) === 1)
-  await win.click('button:has-text("+ Importar fotos")')
+  await win.click('button:has-text("Copiar archivos")')
   await win.waitForFunction(() => document.querySelector('.toast')?.textContent?.includes('ya existían'))
   check('duplicados omitidos', (await win.textContent('.toast')).includes(`${expectedPhotos} ya existían`))
 
@@ -298,7 +298,7 @@ function check(name, ok, detail = '') {
   await win.click('.modal button:has-text("Guardar")')
   await win.waitForSelector('.dropzone')
   await stubOpen(imgs2)
-  await win.click('.dropzone button')
+  await win.click('.dropzone button:has-text("copiar")')
   await win.waitForFunction(() => document.querySelectorAll('.thumb img').length === 2, null, { timeout: 60000 })
 
   await win.click('nav >> text=Fotos')
@@ -719,6 +719,85 @@ Notas: Entregar las fotos el lunes`)
     String(await win.locator('.client-activity .photo-result').count()))
   check('ficha del piloto: título', (await win.textContent('.client-activity')).includes('Fotos asignadas'))
   await shot('ficha-piloto-fotos')
+
+  // --- Explorador de carpeta: ver, filtrar por formato, etiquetar y añadir sin copiar ---
+  const card = path.join(S, 'tarjeta')
+  fs.mkdirSync(card)
+  for (const f of ['DSCF1000.jpg', 'DSCF1001.jpg', 'DSCF1002.jpg']) fs.copyFileSync(path.join(S, 'imgs', f), path.join(card, f))
+  await require('sharp')({ create: { width: 800, height: 600, channels: 3, background: '#2a6fb0' } })
+    .png().toFile(path.join(card, 'DSCF1009.png'))
+
+  await win.click('nav >> text=Eventos'); await win.click('text=+ Nuevo evento')
+  await win.fill('.modal label:has-text("Título") input', 'Karting Recas')
+  await win.selectOption('.modal label:has-text("Tipo") select', 'Carrera')
+  await win.click('.modal button:has-text("Guardar")')
+  await win.waitForSelector('.session-page')
+  await win.click('.day-bar button:has-text("+ Añadir día")')
+  await win.fill('.modal input[type=date]', '2026-10-31')
+  await win.fill('.modal label:has-text("Nombre") input', 'Sábado')
+  await win.click('.modal button:has-text("Guardar")')
+  await win.waitForSelector('.day-bar button:has-text("Sábado")')
+
+  await stubOpen(card)
+  await win.click('.dropzone button:has-text("Abrir la carpeta")')
+  await win.waitForSelector('.folder-browser')
+  await win.waitForFunction(() => document.querySelectorAll('.folder-thumb').length === 4, null, { timeout: 20000 })
+  check('carpeta: muestra las fotos sin importarlas', (await win.locator('.folder-thumb').count()) === 4)
+  // Las miniaturas se generan a demanda: se espera a que aparezcan.
+  const thumbsReady = await win.waitForFunction(
+    () => [...document.querySelectorAll('.folder-thumb img')].every((i) => i.complete && i.naturalWidth > 0),
+    null, { timeout: 30000 }).then(() => true, () => false)
+  check('carpeta: miniaturas generadas', thumbsReady)
+  await shot('carpeta')
+  // Filtro por formato.
+  await win.selectOption('select[aria-label="Formato"]', 'png')
+  await win.waitForTimeout(300)
+  check('carpeta: filtro por formato', (await win.locator('.folder-thumb').count()) === 1, String(await win.locator('.folder-thumb').count()))
+  await win.selectOption('select[aria-label="Formato"]', 'jpg')
+  await win.waitForTimeout(300)
+  check('carpeta: filtro JPEG', (await win.locator('.folder-thumb').count()) === 3)
+  await win.selectOption('select[aria-label="Formato"]', '')
+  await win.waitForTimeout(300)
+
+  // Seleccionar dos y añadirlas etiquetadas con día, piloto y prueba.
+  await win.click('.folder-thumb >> nth=0')
+  await win.click('.folder-thumb >> nth=1', { modifiers: ['Control'] })
+  await win.selectOption('.folder-bar label:has-text("Día") select', { index: 1 })
+  await win.selectOption('.folder-bar label:has-text("Piloto") select', { index: 1 })
+  await win.selectOption('.folder-bar label:has-text("Prueba") select', 'Clasificaciones')
+  await win.click('.folder-bar button:has-text("Añadir")')
+  await win.waitForFunction(() => document.querySelectorAll('.folder-thumb.done').length === 2, null, { timeout: 30000 })
+  check('carpeta: fotos añadidas y marcadas', (await win.locator('.folder-thumb.done').count()) === 2)
+  await win.click('.folder-head button:has-text("Cerrar")')
+  await win.waitForSelector('.session-page')
+  await win.waitForTimeout(500)
+
+  check('carpeta: las fotos están en el evento', (await win.locator('.thumb').count()) === 2, String(await win.locator('.thumb').count()))
+  check('carpeta: etiqueta de prueba', (await win.locator('.thumb .run-badge:has-text("Clasificaciones")').count()) === 2)
+  check('carpeta: etiqueta de piloto', (await win.locator('.thumb .pilot-badge').count()) === 2)
+  const info = await win.evaluate(async () => {
+    const list = await window.api.sessions.list()
+    const ev = list.find((s) => s.title === 'Karting Recas')
+    const photos = await window.api.photos.list(ev.id)
+    return photos.map((p) => ({ ext: p.ext, run: p.run_type, ext_path: !!p.external_path, day: !!p.day_id, pilots: p.pilots.length }))
+  })
+  check('carpeta: enlazadas, no copiadas', info.every((p) => p.ext_path && p.day && p.pilots === 1 && p.run === 'Clasificaciones'), JSON.stringify(info))
+  check('carpeta: formato guardado', info.every((p) => p.ext === 'jpg'), JSON.stringify(info.map((p) => p.ext)))
+  await shot('evento-desde-carpeta')
+
+  // Exportar una foto enlazada copia el original desde su carpeta.
+  await win.click('.thumb >> nth=0')
+  await win.keyboard.press('p')
+  const outLinked = path.join(S, 'out', 'enlazadas')
+  fs.mkdirSync(outLinked)
+  await stubOpen(outLinked)
+  await win.click('button:has-text("Exportar elegidas")')
+  await toast('exportadas')
+  check('carpeta: exporta el original enlazado', fs.readdirSync(outLinked).length === 1, fs.readdirSync(outLinked).join(', '))
+  // Filtro por formato dentro del evento (jpg + el RAW si lo hay).
+  await win.selectOption('select[aria-label="Filtrar por prueba"]', 'Clasificaciones')
+  await win.waitForTimeout(300)
+  check('evento: filtro por prueba', (await win.locator('.thumb').count()) === 2)
 
   // --- Panel ---
   await win.click('nav >> text=Panel'); await win.waitForTimeout(500)

@@ -197,6 +197,18 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE session_items ADD COLUMN kind TEXT NOT NULL DEFAULT 'extra';
   ALTER TABLE session_items ADD COLUMN percent REAL;
   UPDATE session_items SET kind = 'base' WHERE position = 0;
+  `,
+  // v10: fotos enlazadas (sin copiar) y tipo de prueba.
+  // En las enlazadas, original_key queda vacío y external_path apunta al archivo original.
+  `
+  ALTER TABLE photos ADD COLUMN external_path TEXT;
+  ALTER TABLE photos ADD COLUMN run_type TEXT;
+  CREATE INDEX idx_photos_run_type ON photos(run_type);
+  `,
+  // v11: formato de cada foto, para poder filtrar por tipo de archivo.
+  `
+  ALTER TABLE photos ADD COLUMN ext TEXT;
+  CREATE INDEX idx_photos_ext ON photos(ext);
   `
 ]
 
@@ -240,5 +252,27 @@ export function openDatabase(file: string): DB {
       db.exec(`PRAGMA user_version = ${v + 1}`)
     })
   }
+  backfillExtensions(db)
   return db
+}
+
+/** Rellena el formato de las fotos importadas antes de guardarlo (migración v11). */
+function backfillExtensions(db: DB): void {
+  const rows = db.prepare("SELECT id, file_name FROM photos WHERE ext IS NULL").all() as { id: number; file_name: string }[]
+  if (!rows.length) return
+  const upd = db.prepare('UPDATE photos SET ext = ? WHERE id = ?')
+  transaction(db, () => {
+    for (const r of rows) {
+      const dot = r.file_name.lastIndexOf('.')
+      upd.run(dot > 0 ? normalizeExt(r.file_name.slice(dot + 1)) : '', r.id)
+    }
+  })
+}
+
+/** jpeg → jpg, TIFF → tif: un mismo formato, un mismo nombre. */
+export function normalizeExt(ext: string): string {
+  const e = ext.toLowerCase().replace(/^\./, '')
+  if (e === 'jpeg') return 'jpg'
+  if (e === 'tiff') return 'tif'
+  return e
 }

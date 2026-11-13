@@ -5,9 +5,13 @@ export type ImageJob =
   | { op: 'renditions'; src: string; isRaw: boolean; exifOrientation: number; thumbPath: string; previewPath: string }
   | { op: 'gallery'; src: string; watermark: string }
   | { op: 'logo'; src: string }
+  | { op: 'thumb'; src: string; dest: string }
 
-export type ImageJobResult = { width: number | null; height: number | null } | { dataUrl: string }
-type ResultOf<T extends ImageJob['op']> = T extends 'renditions' ? { width: number | null; height: number | null } : { dataUrl: string }
+export type ImageJobResult = { width: number | null; height: number | null } | { dataUrl: string } | { ok: true }
+type ResultOf<T extends ImageJob['op']> =
+  T extends 'renditions' ? { width: number | null; height: number | null }
+  : T extends 'thumb' ? { ok: true }
+  : { dataUrl: string }
 
 let child: UtilityProcess | null = null
 let nextId = 1

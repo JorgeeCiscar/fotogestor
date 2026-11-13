@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Client, LibraryFilter, LibraryPhoto, LibrarySort, Session } from '../../../shared/types'
 import type { View } from '../App'
-import { api, errorMessage, formatDate } from '../util'
+import { api, errorMessage, formatDate, formatLabel } from '../util'
 import Stars from './Stars'
 
 const PAGE = 200
@@ -19,6 +19,7 @@ export default function LibraryView({ nav, clientId, pilotId }: { nav: (v: View)
   const [sessions, setSessions] = useState<Session[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [tags, setTags] = useState<string[]>([])
+  const [formats, setFormats] = useState<{ ext: string; n: number }[]>([])
   const [sessionIds, setSessionIds] = useState<number[]>([])
   const [sessionQuery, setSessionQuery] = useState('')
   const [filter, setFilter] = useState<Omit<LibraryFilter, 'sessionIds'>>({ sort: 'date_desc', clientId, pilotId })
@@ -38,6 +39,7 @@ export default function LibraryView({ nav, clientId, pilotId }: { nav: (v: View)
     api.sessions.list().then(setSessions)
     api.clients.list().then(setClients)
     api.tags().then(setTags)
+    api.formats().then(setFormats)
   }, [])
   useEffect(() => api.library.onCopyProgress(setCopying), [])
   useEffect(() => { if (toast) { const t = setTimeout(() => setToast(''), 5000); return () => clearTimeout(t) } }, [toast])
@@ -129,7 +131,7 @@ export default function LibraryView({ nav, clientId, pilotId }: { nav: (v: View)
   const visibleSessions = sessions.filter((s) =>
     !sessionQuery.trim() || [s.title, s.client_name, s.type].some((v) => v?.toLowerCase().includes(sessionQuery.toLowerCase())))
   const setF = <K extends keyof LibraryFilter>(k: K, v: LibraryFilter[K]) => setFilter((f) => ({ ...f, [k]: v }))
-  const hasFilters = sessionIds.length > 0 || !!(filter.pilotId || filter.clientId || filter.flag || filter.minRating || filter.tag || filter.rawOnly || q)
+  const hasFilters = sessionIds.length > 0 || !!(filter.pilotId || filter.clientId || filter.flag || filter.minRating || filter.tag || filter.ext || q)
 
   return (
     <div className="library">
@@ -185,7 +187,13 @@ export default function LibraryView({ nav, clientId, pilotId }: { nav: (v: View)
               {tags.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           )}
-          <label className="check"><input type="checkbox" checked={!!filter.rawOnly} onChange={(e) => setF('rawOnly', e.target.checked || undefined)} /> Solo RAW</label>
+          {formats.length > 1 && (
+            <select value={filter.ext ?? ''} onChange={(e) => setF('ext', e.target.value || undefined)} aria-label="Formato">
+              <option value="">Todos los formatos</option>
+              <option value="raw">Solo RAW</option>
+              {formats.map((f) => <option key={f.ext} value={f.ext}>{formatLabel(f.ext)} ({f.n})</option>)}
+            </select>
+          )}
           {hasFilters && (
             <button className="ghost" onClick={() => { setSessionIds([]); setQ(''); setFilter({ sort: filter.sort }) }}>Quitar filtros</button>
           )}

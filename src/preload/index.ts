@@ -13,6 +13,13 @@ const api: Api = {
   sessions: {
     list: invoke('sessions:list'), get: invoke('sessions:get'), save: invoke('sessions:save'), remove: invoke('sessions:remove')
   },
+  folder: {
+    choose: invoke('folder:choose'),
+    reopen: invoke('folder:reopen'),
+    add: invoke('folder:add'),
+    thumbUrl: (path: string) => `fotodir://thumb/${encodeURIComponent(path)}`,
+    onProgress: (cb) => subscribe('folder:progress', cb)
+  },
   days: { list: invoke('days:list'), save: invoke('days:save'), remove: invoke('days:remove') },
   photos: {
     list: invoke('photos:list'),
@@ -37,6 +44,7 @@ const api: Api = {
   contacts: { list: invoke('contacts:list'), get: invoke('contacts:get'), save: invoke('contacts:save'), remove: invoke('contacts:remove') },
   tariffs: { list: invoke('tariffs:list'), save: invoke('tariffs:save'), remove: invoke('tariffs:remove') },
   tags: invoke('tags'),
+  formats: invoke('formats'),
   championships: invoke('championships'),
   search: invoke('search'),
   gallery: {
