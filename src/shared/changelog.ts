@@ -14,6 +14,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.8.1',
+    date: '2026-11-13',
+    title: 'Pegar datos: entiende mensajes más desordenados',
+    changes: [
+      'Reconoce el nombre en frases como «se llama X» y el dorsal en «va con el 71».',
+      'Detecta el equipo dentro de una frase, y al tutor con su teléfono («su madre es X, tlf …»).',
+      'Ya no confunde un número de licencia con un teléfono, ni arrastra texto de más en el lugar.',
+      'Si en el texto hay varios precios, se queda con el último, que suele ser el acordado.'
+    ]
+  },
+  {
     version: '0.8.0',
     date: '2026-11-13',
     title: 'Pegar datos y que se rellenen solos',

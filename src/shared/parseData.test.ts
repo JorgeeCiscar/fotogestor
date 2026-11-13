@@ -122,3 +122,52 @@ test('el texto vacío o sin datos no inventa nada', () => {
   assert.deepEqual(parseData('', 'client'), [])
   assert.deepEqual(parseData('...', 'session'), [])
 })
+
+test('mensaje desordenado de un piloto menor', () => {
+  const text = `Buenas Jorge!! perdona el retraso jeje
+Te paso lo del chaval para las fotos del finde:
+
+Se llama Iker Montalbán Ferrer, va con el 71 este año
+Categoría   :   PreMoto4 (Cuna de Campeones)
+Moto: Honda NSF100
+Va con el Speed racing team aunque antes estaba en otro
+nacio el 3 de marzo de 2012 asi que todavia es menor...
+su madre es Pilar Ferrer, tlf 655-44-33-22
+Licencia nº RFME-2026-00841
+el correo que usamos es iker.montalban@gmail.com (lo lleva ella)
+IG: @iker71_racing
+DNI del chaval 49887766K
+Gracias!!`
+  const r = map(text, 'client')
+  assert.equal(r.name, 'Iker Montalbán Ferrer')
+  assert.equal(r.racing_number, '71')
+  assert.equal(r.category, 'PreMoto4 (Cuna de Campeones)')
+  assert.equal(r.vehicle, 'Honda NSF100')
+  assert.equal(r.team, 'Speed racing team')
+  assert.equal(r.birth_date, '2012-03-03')
+  assert.equal(r.license_number, 'RFME-2026-00841')
+  assert.equal(r.email, 'iker.montalban@gmail.com')
+  assert.equal(r.instagram, 'iker71_racing')
+  assert.equal(r.tax_id, '49887766K')
+  assert.equal(r.guardian_name, 'Pilar Ferrer')
+  assert.equal(r.guardian_phone, '655-44-33-22')
+  // El número de licencia no es un teléfono.
+  assert.equal(r.phone, undefined)
+  assert.equal(guessClientKind(text, parseData(text, 'client')), 'piloto')
+})
+
+test('correo de encargo con dos precios', () => {
+  const r = map(`Asunto: presupuesto fotos Cheste
+Hola! quería contratarte para la última prueba del ESBK en Cheste.
+Serían las dos carreras del domingo 18/10/26 en el Circuit Ricardo Tormo.
+Nos han pasado otros 1.500€ pero contigo cerraríamos en 1.250 €.
+El contratante sería Speed Racing Team (CIF B12345678).
+Necesitamos las fotos el lunes por la mañana para prensa.`, 'session')
+  assert.equal(r.title, 'presupuesto fotos Cheste')
+  assert.equal(r.clientName, 'Speed Racing Team')
+  assert.equal(r.type, 'Carrera')
+  assert.equal(r.date, '2026-10-18')
+  assert.equal(r.location, 'Circuit Ricardo Tormo')
+  // Se queda con el importe acordado, no con el de la competencia.
+  assert.equal(r.price, '1250')
+})

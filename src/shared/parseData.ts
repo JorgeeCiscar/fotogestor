@@ -85,8 +85,17 @@ const RE = {
   textDate: /\b(\d{1,2})\s*(?:de\s+)?([a-záéíóúñ]{3,10})\.?\s*(?:de\s+)?(\d{4})\b/i,
   price: /(\d{1,3}(?:[.\s]\d{3})+|\d+)(?:,(\d{1,2}))?\s*(?:€|eur\b|euros\b)|(?:€)\s*(\d{1,3}(?:[.\s]\d{3})+|\d+)(?:,(\d{1,2}))?/i,
   dorsal: /(?:^|[\s(,;])(?:dorsal|n[º°]\.?|nro\.?|num(?:ero)?\.?|#)\s*:?\s*(\d{1,3})\b/i,
-  circuit: /\bcircuit(?:o)?\s+(?:de\s+|ricardo\s+)?[\wáéíóúñ'’.-]+(?:\s+[\wáéíóúñ'’.-]+){0,3}/i,
-  iAm: /\b(?:[Ss]oy|[Mm]e llamo|[Mm]i nombre es)\s+([A-ZÁÉÍÓÚÑ][\wáéíóúñ'’-]+(?:\s+[A-ZÁÉÍÓÚÑ][\wáéíóúñ'’-]+){1,3})/
+  circuit: /\bcircuit(?:o)?[^\S\n]+(?:de[^\S\n]+)?[\wáéíóúñ'’-]+(?:[^\S\n]+[\wáéíóúñ'’-]+){0,2}/i,
+  iAm: /\b(?:[Ss]oy|[Ss]e llama|[Mm]e llamo|[Mm]i nombre es|[Ee]l piloto es|[Ss]e trata de)\s+([A-ZÁÉÍÓÚÑ][\wáéíóúñ'’-]+(?:\s+[A-ZÁÉÍÓÚÑ][\wáéíóúñ'’-]+){1,3})/,
+  // «va con el 71», «lleva el 46 este año»
+  looseNumber: /\b(?:va|lleva|corre|compite|sale)\s+(?:con\s+)?(?:el|la)\s+(\d{1,3})\b/i,
+  // Nombres de equipo que acaban en team / racing / escudería / motorsport
+  teamName: /\b((?:[\wÁ-Úá-ú'’.&-]+\s+){0,3}(?:racing\s+team|motorsport|escuder[ií]a|team|racing))\b/i,
+  // «su madre es Pilar Ferrer», «tutor legal: Jordi Pérez»
+  guardian: /\b(?:su\s+)?(?:madre|padre|tutora?|representante(?:\s+legal)?)\s*(?:legal\s*)?(?:es|:)\s*([A-ZÁÉÍÓÚÑ][\wáéíóúñ'’-]+(?:\s+[A-ZÁÉÍÓÚÑ][\wáéíóúñ'’-]+){0,3})/i,
+  guardianLine: /\b(?:madre|padre|tutora?|representante|progenitor)\b/i,
+  // «El contratante sería Speed Racing Team», «el cliente es X»
+  clientIs: /\b(?:cliente|contratante|factur(?:a|ar)\s+a)\s+(?:ser[ií]a|es|:)\s*([A-ZÁÉÍÓÚÑ][\wÁ-Úá-ú'’.&-]*(?:\s+[\wÁ-Úá-ú'’.&-]+){0,4})/i
 }
 
 /** Convierte un texto de fecha a AAAA-MM-DD, o null si no se reconoce. */
@@ -139,6 +148,37 @@ function fieldsForLabel(label: string, target: ParseTarget): { key: string; labe
   return candidates.filter((x) => x.aliases.some((a) => a.length >= 4 && (f.startsWith(a + ' ') || f.endsWith(' ' + a))))
 }
 
+/** Campos cuyo nombre es exactamente la etiqueta escrita (sin coincidencias parciales). */
+function exactFieldsForLabel(label: string, target: ParseTarget): { key: string; label: string }[] {
+  const f = fold(label).replace(/[*_]/g, '').replace(/\s+/g, ' ')
+  return FIELDS.filter((x) => x.targets.includes(target) && x.aliases.includes(f))
+}
+
+const STOPWORDS = ['y', 'e', 'o', 'u', 'de', 'del', 'la', 'el', 'los', 'las', 'con', 'en', 'para', 'al']
+
+/**
+ * Línea del tipo «Licencia nº RFME-0841» o «Dorsal 46»: la etiqueta va delante
+ * y el valor detrás, sin dos puntos. Se usa la etiqueta más larga que encaje.
+ */
+function inlineLabelValue(line: string, target: ParseTarget): { fields: { key: string; label: string }[]; value: string } | null {
+  const f = fold(line)
+  if (f.length > 90) return null
+  let best = ''
+  for (const field of FIELDS) {
+    if (!field.targets.includes(target)) continue
+    for (const alias of field.aliases) {
+      if (alias.length > best.length && (f === alias || f.startsWith(alias + ' '))) best = alias
+    }
+  }
+  if (!best) return null
+  // El resto de la línea, quitando separadores sueltos («nº», «-», «=»).
+  const rest = line.slice(best.length).replace(/^[\s:=\-–—]*(?:n[ºo°]\.?|num(?:ero)?\.?|#)?[\s:=\-–—]*/i, '').trim()
+  if (!rest || rest.length > 60) return null
+  // «Nombre y apellidos» no es «Nombre» + valor «y apellidos».
+  if (STOPWORDS.includes(fold(rest.split(/\s+/)[0]))) return null
+  return { fields: FIELDS.filter((x) => x.targets.includes(target) && x.aliases.includes(best)), value: rest }
+}
+
 /** ¿Parece un nombre propio? (2–4 palabras, sin cifras ni símbolos). */
 function looksLikeName(line: string): boolean {
   const t = line.trim()
@@ -175,9 +215,12 @@ export function parseData(text: string, target: ParseTarget): Detected[] {
       }
     }
     // Etiqueta sola en una línea y el valor en la siguiente («Dorsal» / «46»).
-    const fields = fieldsForLabel(line, target)
-    const free = fields.find((f) => !found.has(f.key))
-    if (free && lines[i + 1] && !lines[i + 1].includes(':')) put(free.key, lines[i + 1])
+    const exact = exactFieldsForLabel(line, target)
+    const free = exact.find((f) => !found.has(f.key))
+    if (free && lines[i + 1] && !lines[i + 1].includes(':')) { put(free.key, lines[i + 1]); continue }
+    // Etiqueta y valor en la misma línea sin dos puntos («Licencia nº RFME-0841»).
+    const inline = inlineLabelValue(line, target)
+    if (inline) put((inline.fields.find((f) => !found.has(f.key)) ?? inline.fields[0]).key, inline.value)
   }
 
   // --- 2) Patrones sueltos para lo que falte ---
@@ -190,22 +233,40 @@ export function parseData(text: string, target: ParseTarget): Detected[] {
   const url = text.match(RE.url)?.[0]
   if (url && !/instagram\.com/i.test(url)) put('website', url)
 
+  if (target === 'client') {
+    // El tutor y su teléfono: si un teléfono aparece junto a «madre/padre/tutor», es suyo.
+    put('guardian_name', text.match(RE.guardian)?.[1])
+    const gLine = lines.find((l) => RE.guardianLine.test(l) && RE.phone.test(l))
+    if (gLine) {
+      const gPhone = gLine.match(RE.phone)?.[0]?.trim()
+      if (gPhone && gPhone.replace(/\D/g, '').length >= 9) {
+        put('guardian_phone', gPhone)
+        if (!found.has('guardian_name')) put('guardian_name', gLine.match(RE.guardian)?.[1])
+      }
+    }
+  }
+
   if (!found.has('phone')) {
     // Se descartan las cifras que ya se han reconocido como otra cosa.
-    const used = [found.get('tax_id'), found.get('birth_date'), found.get('date'), email].filter(Boolean).join(' ')
+    const used = [found.get('tax_id'), found.get('license_number'), found.get('birth_date'), found.get('date'),
+      found.get('guardian_phone'), email].filter(Boolean).join(' ')
     for (const cand of withoutEmails.match(new RegExp(RE.phone.source, 'g')) ?? []) {
       const digits = cand.replace(/\D/g, '')
       if (digits.length < 9 || digits.length > 13) continue
       if (used.includes(cand.trim())) continue
+      // Descarta cifras pegadas a un código («RFME-2026-00841»).
+      const at = withoutEmails.indexOf(cand)
+      if (at > 0 && /[A-Za-z-]/.test(withoutEmails[at - 1])) continue
       put('phone', cand)
       break
     }
   }
 
   if (target === 'client') {
-    put('racing_number', text.match(RE.dorsal)?.[1])
+    put('racing_number', text.match(RE.dorsal)?.[1] ?? text.match(RE.looseNumber)?.[1])
+    if (!found.has('team')) put('team', teamName(text))
     if (!found.has('birth_date')) {
-      const near = lines.find((l) => /nacid|nacimiento|cumple/i.test(l))
+      const near = lines.find((l) => /naci|nacimiento|cumple/i.test(fold(l)) && parseDate(l))
       if (near) put('birth_date', parseDate(near) ?? '')
     }
     if (!found.has('name')) {
@@ -220,9 +281,13 @@ export function parseData(text: string, target: ParseTarget): Detected[] {
       put('date', parseDate(found.get('date')!) ?? '')
       found.set('date', parseDate(found.get('date')!) ?? found.get('date')!)
     }
-    if (!found.has('location')) put('location', text.match(RE.circuit)?.[0])
+    if (!found.has('clientName')) put('clientName', text.match(RE.clientIs)?.[1] ?? teamName(text))
+    if (!found.has('location')) put('location', text.match(RE.circuit)?.[0]?.replace(/[.,;]+$/, ''))
     if (!found.has('price')) {
-      const p = parsePrice(text)
+      // Con varias cifras («nos han pasado 1.500 € pero cerraríamos en 1.250 €»)
+      // se queda con la última, que suele ser la acordada.
+      const all = text.match(new RegExp(RE.price.source, 'gi')) ?? []
+      const p = all.length ? parsePrice(all[all.length - 1]) : null
       if (p !== null) put('price', String(p))
     }
     if (!found.has('type')) {
@@ -267,6 +332,16 @@ export function parseData(text: string, target: ParseTarget): Detected[] {
     .filter(([k]) => order.includes(k))
     .sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]))
     .map(([key, value]) => ({ key, label: FIELDS.find((f) => f.key === key)!.label, value }))
+}
+
+/** Nombre de equipo dentro de una frase: «va con el Speed Racing Team» → «Speed Racing Team». */
+function teamName(text: string): string | null {
+  const m = text.match(RE.teamName)
+  if (!m) return null
+  const words = m[1].trim().split(/\s+/)
+  while (words.length > 1 && STOPWORDS.includes(fold(words[0]))) words.shift()
+  const name = words.join(' ')
+  return words.length >= 2 && name.length <= 48 ? name : null
 }
 
 /** Deduce si el texto describe un piloto, un equipo o un particular. */
