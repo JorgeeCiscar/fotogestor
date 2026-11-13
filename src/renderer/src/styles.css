@@ -321,3 +321,7 @@ label.check input { width: auto; margin: 0; accent-color: var(--accent); }
 .items-total td { font-weight: 600; border-top: 1px solid var(--border); padding-top: 6px; }
 .form .hint.link { align-self: flex-start; font-size: 12px; }
 .tariffs tr.dirty td { background: #2e2c22; }
+.tariff-starter { background: var(--panel); border: 1px solid var(--accent); border-radius: var(--radius); padding: 16px 18px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 24px; max-width: 760px; }
+.tariff-starter p { margin: 0; }
+.tariffs select { min-width: 110px; }

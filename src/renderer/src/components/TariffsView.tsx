@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { Tariff, TariffCategory, TariffInput } from '../../../shared/types'
+import { DEFAULT_TARIFFS } from '../../../shared/defaultTariffs'
+import type { Tariff, TariffCategory, TariffInput, TariffMode } from '../../../shared/types'
 import { api, errorMessage, formatMoney, SESSION_TYPES } from '../util'
 
 const UNITS = ['por sesión', 'por hora', 'por día', 'por foto', 'por piloto', 'por álbum', 'por km']
 
 const emptyRow = (category: TariffCategory): TariffInput =>
-  ({ category, session_type: '', label: '', price: 0, unit: category === 'sesion' ? 'por sesión' : '', notes: '' })
+  ({ category, mode: 'fijo', session_type: '', label: '', price: 0, unit: category === 'sesion' ? 'por sesión' : '', notes: '' })
 
 const same = (a: TariffInput, b: TariffInput) =>
-  a.label.trim() === b.label.trim() && Number(a.price) === Number(b.price) &&
+  a.label.trim() === b.label.trim() && Number(a.price) === Number(b.price) && a.mode === b.mode &&
   (a.unit ?? '') === (b.unit ?? '') && (a.notes ?? '') === (b.notes ?? '') && (a.session_type ?? '') === (b.session_type ?? '')
 
 /** Fila editable: se guarda al salir de un campo (si cambió) o con Enter. */
@@ -44,9 +45,18 @@ function TariffRow({ tariff, isNew, onSave, onRemove, onCancel }: {
         <input autoFocus={isNew} value={row.label} onChange={(e) => set('label', e.target.value)} onBlur={commit}
           placeholder={row.category === 'sesion' ? 'Cobertura de carrera' : 'Álbum 30×30'} />
       </td>
+      {row.category === 'extra' && (
+        <td>
+          <select value={row.mode} onChange={(e) => set('mode', e.target.value as TariffMode)} onBlur={commit}>
+            <option value="fijo">Importe</option>
+            <option value="porcentaje">Porcentaje</option>
+          </select>
+        </td>
+      )}
       <td className="tariff-price">
-        <input className="n" type="number" min="0" step="0.01" value={row.price}
-          onChange={(e) => set('price', e.target.value as unknown as number)} onBlur={commit} /> €
+        <input className="n" type="number" step={row.mode === 'porcentaje' ? 1 : 0.01}
+          min={row.mode === 'porcentaje' ? -100 : 0} value={row.price}
+          onChange={(e) => set('price', e.target.value as unknown as number)} onBlur={commit} /> {row.mode === 'porcentaje' ? '%' : '€'}
       </td>
       <td>
         <input list="tariff-units" value={row.unit ?? ''} onChange={(e) => set('unit', e.target.value)} onBlur={commit} placeholder="por sesión" />
@@ -101,6 +111,7 @@ export default function TariffsView() {
             <tr>
               {category === 'sesion' && <th>Tipo de sesión</th>}
               <th>Concepto</th>
+              {category === 'extra' && <th>Tipo</th>}
               <th className="n">Precio</th>
               <th>Unidad</th>
               <th>Notas</th>
@@ -112,7 +123,7 @@ export default function TariffsView() {
               <TariffRow key={t.id} tariff={t} onSave={save} onRemove={() => remove(t)} />
             ))}
             {adding && <TariffRow key="new" tariff={draft!} isNew onSave={save} onCancel={() => setDraft(null)} />}
-            {!rows.length && !adding && <tr><td colSpan={6} className="muted small">Sin tarifas todavía.</td></tr>}
+            {!rows.length && !adding && <tr><td colSpan={7} className="muted small">Sin tarifas todavía.</td></tr>}
           </tbody>
         </table>
         <button className="ghost" onClick={() => setDraft(emptyRow(category))} disabled={!!draft}>
@@ -120,6 +131,15 @@ export default function TariffsView() {
         </button>
       </section>
     )
+  }
+
+  /** Carga la lista de precios de karting y motorsport (solo si no hay ninguna). */
+  async function loadDefaults() {
+    try {
+      setError('')
+      for (const t of DEFAULT_TARIFFS) await api.tariffs.save(t)
+      load()
+    } catch (err) { setError(errorMessage(err)) }
   }
 
   const base = tariffs.filter((t) => t.category === 'sesion')
@@ -134,6 +154,17 @@ export default function TariffsView() {
         de ahí salen el precio de la sesión y las partidas del presupuesto.
       </p>
       {error && <p className="error">{error}</p>}
+      {!tariffs.length && (
+        <div className="tariff-starter">
+          <strong>¿Empezamos con tus precios habituales?</strong>
+          <p className="muted small">
+            Carga la lista de karting y motorsport: cobertura por piloto y día, fin de semana de 3 días,
+            precio de equipo, licencia comercial, entrega prioritaria, vídeo, kilometraje, dietas,
+            descuentos de temporada y cancelaciones. Luego cambia lo que quieras.
+          </p>
+          <button className="primary" onClick={loadDefaults}>Cargar {DEFAULT_TARIFFS.length} tarifas</button>
+        </div>
+      )}
       {section('sesion', 'Precio por tipo de sesión',
         'Se aplica automáticamente al elegir el tipo al crear una sesión. Deja el tipo en «Cualquiera» para una tarifa general.')}
       {section('extra', 'Extras',

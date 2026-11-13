@@ -498,6 +498,17 @@ Notas: Entregar las fotos el lunes`)
 
   // --- Tarifas: lista de precios y su efecto al crear sesiones ---
   await win.click('nav >> text=Tarifas')
+  check('tarifas: ofrece cargar la lista inicial', (await win.locator('.tariff-starter').count()) === 1)
+  await win.click('.tariff-starter button')
+  await win.waitForFunction(() => document.querySelectorAll('.tariffs tbody tr').length > 15, null, { timeout: 20000 })
+  const loaded = await win.locator('.tariffs tbody tr').count()
+  check('tarifas: catálogo cargado', loaded === 22, String(loaded))
+  check('tarifas: incluye porcentajes', (await win.locator('.tariffs tr:has(select option[value="porcentaje"]:checked)').count()) >= 5,
+    String(await win.locator('.tariffs tr:has(select option[value="porcentaje"]:checked)').count()))
+  await shot('tarifas-catalogo')
+  // Se borra la tarifa de Carrera del catálogo para probar el alta a mano.
+  await win.click('.tariffs tr:has(input[value="Cobertura de carrera · piloto, fin de semana"]) button:has-text("Eliminar")')
+  await win.waitForTimeout(400)
   await win.click('button:has-text("+ Añadir tipo de sesión")')
   await win.selectOption('.tariffs tr:last-child select', 'Carrera')
   await win.fill('.tariffs tr:last-child td:nth-child(2) input', 'Cobertura de carrera')
@@ -512,12 +523,12 @@ Notas: Entregar las fotos el lunes`)
   check('tarifas: guardadas', (await win.locator('.tariffs input[value="Cobertura de carrera"]').count()) === 1
     && (await win.locator('.tariffs input[value="Desplazamiento"]').count()) === 1)
   // Se editan en la propia tabla: al salir del campo se guarda.
-  await win.fill('.tariff-section:has-text("tipo de sesión") .tariff-price input', '500')
+  await win.fill('.tariffs tr:has(input[value="Cobertura de carrera"]) .tariff-price input', '500')
   check('tarifas: avisa de cambios sin guardar', (await win.locator('.tariffs tr.dirty').count()) === 1)
   await win.click('.tariffs tr.dirty button:has-text("Guardar")')
   await win.waitForTimeout(500)
   await win.click('nav >> text=Panel'); await win.click('nav >> text=Tarifas'); await win.waitForTimeout(400)
-  check('tarifas: edición en la tabla', (await win.inputValue('.tariff-section:has-text("tipo de sesión") .tariff-price input')) === '500')
+  check('tarifas: edición en la tabla', (await win.inputValue('.tariffs tr:has(input[value="Cobertura de carrera"]) .tariff-price input')) === '500')
   await shot('tarifas')
 
   // Al crear una sesión de ese tipo, su tarifa se aplica sola.
@@ -532,6 +543,17 @@ Notas: Entregar las fotos el lunes`)
   check('extra añadido y precio actualizado', (await win.inputValue('.modal input[type=number]')) === '580',
     await win.inputValue('.modal input[type=number]'))
   check('total de la tarifa', (await win.textContent('.items-total')).includes('580,00'))
+  // Licencia comercial: 25 % sobre los 580 € que hay en ese momento = 145 €.
+  await win.selectOption('select[aria-label="Añadir extra"]', { label: 'Licencia comercial — 25 % sobre la cobertura' })
+  await win.waitForTimeout(300)
+  check('extra en porcentaje calculado', (await win.textContent('.items-total')).includes('725,00'),
+    await win.textContent('.items-total'))
+  const pctRow = await win.locator('.tariff-block .items tbody tr:nth-child(3) td:first-child input').inputValue()
+  check('extra en porcentaje: concepto', pctRow === 'Licencia comercial (25 %)', pctRow)
+  // Se quita para que el resto de la prueba siga con los importes de antes.
+  await win.click('.tariff-block .items tbody tr:nth-child(3) button')
+  await win.waitForTimeout(300)
+  check('extra quitado', (await win.textContent('.items-total')).includes('580,00'))
   await shot('sesion-tarifa')
   await win.click('.modal button:has-text("Guardar")')
   await win.waitForSelector('.session-page')

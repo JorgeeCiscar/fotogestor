@@ -14,6 +14,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.11.0',
+    date: '2026-11-13',
+    title: 'Tus precios ya cargados',
+    changes: [
+      'En «Tarifas», si la lista está vacía, un botón carga tus 22 precios de karting y motorsport: cobertura por piloto y día, fin de semana, precio de equipo, extras, viajes, descuentos y cancelaciones.',
+      'Nuevas tarifas en porcentaje: licencia comercial (+25 %), descuentos de temporada (−5 % y −10 %) y cancelaciones (25 %, 50 %, 100 %).',
+      'Al añadir un porcentaje a una sesión se calcula solo sobre lo que lleve acumulado.'
+    ]
+  },
+  {
     version: '0.10.0',
     date: '2026-11-13',
     title: 'Tus tarifas',

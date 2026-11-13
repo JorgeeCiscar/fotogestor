@@ -5,7 +5,7 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
 
 **Stack:** Electron · React · TypeScript · Vite (electron-vite) · SQLite (`node:sqlite`, integrado en Electron) · sharp · exifr
 
-## Funcionalidades (v0.10)
+## Funcionalidades (v0.11)
 
 - **Clientes** de tres tipos, que se eligen al darlos de alta:
   - **Piloto**: dorsal, categoría, moto/coche, equipo, nacionalidad, fecha de nacimiento, licencia y,
@@ -30,7 +30,9 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
   sesiones y fotos (nombre de archivo, etiqueta, cámara, objetivo).
 - **Galería para el cliente**: un único `.html` con las fotos (con marca de agua opcional). El cliente lo
   abre en el navegador, marca favoritas con ♥ y devuelve un código que se importa en la sesión.
-- **Tarifas**: lista de precios propia, con un precio por tipo de sesión y extras sueltos. Al crear una
+- **Tarifas**: lista de precios propia, con un precio por tipo de sesión y extras sueltos, fijos o en
+  porcentaje (licencia comercial, descuentos, cancelaciones). Incluye un catálogo inicial de karting y
+  motorsport (`src/shared/defaultTariffs.ts`). Al crear una
   sesión se aplica la tarifa de su tipo, los extras se añaden a mano y el total pasa al precio de la
   sesión y a las partidas del presupuesto.
 - **Presupuestos y facturas**: datos del negocio y logotipo, partidas, IVA y retención de IRPF,

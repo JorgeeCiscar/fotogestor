@@ -136,6 +136,10 @@ export const MIGRATIONS: string[] = [
     unit_price REAL NOT NULL DEFAULT 0
   );
   CREATE INDEX idx_session_items ON session_items(session_id);
+  `,
+  // v6: tarifas en porcentaje (licencia comercial, descuentos, cancelaciones).
+  `
+  ALTER TABLE tariffs ADD COLUMN mode TEXT NOT NULL DEFAULT 'fijo';
   `
 ]
 

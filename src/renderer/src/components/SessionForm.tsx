@@ -73,8 +73,18 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
     })
   }
 
+  /**
+   * Añade un extra. Si es un porcentaje (licencia comercial, descuentos…) se calcula
+   * sobre el total que haya en ese momento y se guarda ya convertido a euros.
+   */
   const addExtra = (t: Tariff) =>
-    setForm((f) => ({ ...f, items: [...f.items, { description: t.label, quantity: 1, unit_price: t.price }] }))
+    setForm((f) => {
+      const unit_price = t.mode === 'porcentaje'
+        ? Math.round((itemsTotal(f.items) * t.price) / 100 * 100) / 100
+        : t.price
+      const description = t.mode === 'porcentaje' ? `${t.label} (${t.price} %)` : t.label
+      return { ...f, items: [...f.items, { description, quantity: 1, unit_price }] }
+    })
   const setItem = (i: number, patch: Partial<SessionItem>) =>
     setForm((f) => ({ ...f, items: f.items.map((it, j) => (j === i ? { ...it, ...patch } : it)) }))
   const removeItem = (i: number) => setForm((f) => ({ ...f, items: f.items.filter((_, j) => j !== i) }))
@@ -152,7 +162,11 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
               <select value="" aria-label="Añadir extra"
                 onChange={(e) => { const t = extras.find((x) => String(x.id) === e.target.value); if (t) addExtra(t) }}>
                 <option value="">+ Añadir extra…</option>
-                {extras.map((t) => <option key={t.id} value={t.id}>{t.label} — {formatMoney(t.price)}{t.unit ? ` ${t.unit}` : ''}</option>)}
+                {extras.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label} — {t.mode === 'porcentaje' ? `${t.price} %` : formatMoney(t.price)}{t.unit ? ` ${t.unit}` : ''}
+                  </option>
+                ))}
               </select>
             )}
           </div>

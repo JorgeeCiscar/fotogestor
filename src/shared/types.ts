@@ -82,9 +82,12 @@ export type SessionInput = Omit<
 > & { id?: number }
 
 export type TariffCategory = 'sesion' | 'extra'
+/** 'fijo': `price` son euros. 'porcentaje': `price` es un % sobre el total de la sesión. */
+export type TariffMode = 'fijo' | 'porcentaje'
 export interface Tariff {
   id: number
   category: TariffCategory
+  mode: TariffMode
   /** Tipo de sesión al que se aplica (solo en category 'sesion'). */
   session_type: string | null
   label: string

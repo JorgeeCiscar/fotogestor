@@ -2,7 +2,7 @@ import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { copyFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { SQLInputValue } from 'node:sqlite'
-import type { ClientInput, Photo, PhotoPatch, SessionInput, SessionStatus, TariffInput } from '../shared/types'
+import type { ClientInput, Photo, PhotoPatch, SessionInput, SessionStatus, TariffInput, TariffMode } from '../shared/types'
 import { CLIENT_KINDS, PILOT_FIELDS, RACE_TYPE, SESSION_STATUSES, TEAM_FIELDS } from '../shared/types'
 import { transaction, type DB } from './db'
 import { registerGalleryIpc } from './gallery'
@@ -254,10 +254,14 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
   ipcMain.handle('tariffs:save', (_e, t: TariffInput) => {
     if (!['sesion', 'extra'].includes(t.category)) throw new Error('Categoría de tarifa no válida')
     if (!t.label?.trim()) throw new Error('La tarifa necesita un nombre')
+    const mode: TariffMode = t.mode === 'porcentaje' && t.category === 'extra' ? 'porcentaje' : 'fijo'
     const price = Number(t.price)
-    if (!Number.isFinite(price) || price < 0) throw new Error('Precio no válido')
+    if (!Number.isFinite(price)) throw new Error('Precio no válido')
+    if (mode === 'fijo' && price < 0) throw new Error('El precio no puede ser negativo')
+    if (mode === 'porcentaje' && (price < -100 || price > 200)) throw new Error('El porcentaje debe estar entre −100 y 200')
     const row = {
       category: t.category,
+      mode,
       session_type: t.category === 'sesion' ? nullIfEmpty(t.session_type) : null,
       label: t.label.trim(),
       price,
@@ -266,12 +270,12 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
     }
     let id = t.id
     if (id) {
-      db.prepare('UPDATE tariffs SET category=@category, session_type=@session_type, label=@label, price=@price, unit=@unit, notes=@notes WHERE id=@id')
+      db.prepare('UPDATE tariffs SET category=@category, mode=@mode, session_type=@session_type, label=@label, price=@price, unit=@unit, notes=@notes WHERE id=@id')
         .run({ ...row, id })
     } else {
       const next = Number((db.prepare('SELECT COALESCE(MAX(position), 0) + 1 AS n FROM tariffs WHERE category = ?').get(t.category) as { n: number }).n)
-      id = Number(db.prepare(`INSERT INTO tariffs (category, session_type, label, price, unit, notes, position)
-        VALUES (@category, @session_type, @label, @price, @unit, @notes, @position)`).run({ ...row, position: next }).lastInsertRowid)
+      id = Number(db.prepare(`INSERT INTO tariffs (category, mode, session_type, label, price, unit, notes, position)
+        VALUES (@category, @mode, @session_type, @label, @price, @unit, @notes, @position)`).run({ ...row, position: next }).lastInsertRowid)
     }
     return db.prepare('SELECT * FROM tariffs WHERE id = ?').get(id)
   })
