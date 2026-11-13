@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import type { Client, Contact, Session, SessionInput, SessionItem, Tariff } from '../../../shared/types'
 import { RACE_TYPE, SESSION_STATUSES } from '../../../shared/types'
 import { api, errorMessage, formatMoney, itemsTotal, SESSION_TYPES, STATUS_LABEL } from '../util'
+import ExtraQuantityDialog, { needsDetail } from './ExtraQuantityDialog'
 import Modal from './Modal'
 import PasteDataDialog from './PasteDataDialog'
 import TagInput from './TagInput'
@@ -36,6 +37,7 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
   const [championships, setChampionships] = useState<string[]>([])
   const [error, setError] = useState('')
   const [pasting, setPasting] = useState(false)
+  const [askingExtra, setAskingExtra] = useState<Tariff | null>(null)
   useEffect(() => { api.clients.list().then(setClients); api.championships().then(setChampionships); api.tariffs.list().then(setTariffs); api.contacts.list().then(setContacts) }, [])
   const set = (k: keyof SessionInput) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value })
 
@@ -57,6 +59,19 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
 
   const extras = tariffs.filter((t) => t.category === 'extra')
   const total = itemsTotal(form.items)
+  /** La cobertura: solo las partidas del tipo de evento, sin extras ni ajustes. */
+  const coverage = itemsTotal(form.items.filter((it) => it.kind === 'base'))
+
+  /**
+   * Recalcula los ajustes en porcentaje (licencia comercial, descuentos…),
+   * que se aplican solo sobre la cobertura, nunca sobre los extras.
+   */
+  function recalc(items: SessionItem[]): SessionItem[] {
+    const base = itemsTotal(items.filter((it) => it.kind === 'base'))
+    return items.map((it) => (it.kind === 'ajuste' && it.percent !== null
+      ? { ...it, quantity: 1, unit_price: Math.round((base * it.percent) / 100 * 100) / 100 }
+      : it))
+  }
 
   /** Tarifa base del tipo elegido (la específica manda sobre la general). */
   function baseTariff(type: string | null): Tariff | undefined {
@@ -67,12 +82,13 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
   /** Al cambiar el tipo se pone su tarifa como primera partida. */
   function changeType(type: string) {
     setForm((f) => {
-      const previous = baseTariff(f.type)
       const next = baseTariff(type)
-      // Se sustituye la partida de la tarifa anterior; los extras se conservan.
-      const rest = f.items.filter((it) => !previous || it.description !== previous.label)
-      const items = next ? [{ description: next.label, quantity: 1, unit_price: next.price }, ...rest] : rest
-      return { ...f, type, items }
+      // Se sustituye la cobertura anterior; los extras y ajustes se conservan.
+      const rest = f.items.filter((it) => it.kind !== 'base')
+      const items = next
+        ? [{ description: next.label, quantity: 1, unit_price: next.price, kind: 'base' as const, percent: null }, ...rest]
+        : rest
+      return { ...f, type, items: recalc(items) }
     })
   }
 
@@ -80,17 +96,23 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
    * Añade un extra. Si es un porcentaje (licencia comercial, descuentos…) se calcula
    * sobre el total que haya en ese momento y se guarda ya convertido a euros.
    */
-  const addExtra = (t: Tariff) =>
-    setForm((f) => {
-      const unit_price = t.mode === 'porcentaje'
-        ? Math.round((itemsTotal(f.items) * t.price) / 100 * 100) / 100
-        : t.price
-      const description = t.mode === 'porcentaje' ? `${t.label} (${t.price} %)` : t.label
-      return { ...f, items: [...f.items, { description, quantity: 1, unit_price }] }
-    })
+  /** Añade un extra ya resuelto (cantidad y precio decididos). */
+  const pushItem = (item: SessionItem) => setForm((f) => ({ ...f, items: recalc([...f.items, item]) }))
+
+  function addExtra(t: Tariff) {
+    if (t.mode === 'porcentaje') {
+      // Los ajustes se calculan sobre la cobertura y se recalculan solos.
+      pushItem({ description: `${t.label} (${t.price} %)`, quantity: 1, unit_price: 0, kind: 'ajuste', percent: t.price })
+    } else if (needsDetail(t)) {
+      setAskingExtra(t)
+    } else {
+      pushItem({ description: t.label, quantity: 1, unit_price: t.price, kind: 'extra', percent: null })
+    }
+  }
+
   const setItem = (i: number, patch: Partial<SessionItem>) =>
-    setForm((f) => ({ ...f, items: f.items.map((it, j) => (j === i ? { ...it, ...patch } : it)) }))
-  const removeItem = (i: number) => setForm((f) => ({ ...f, items: f.items.filter((_, j) => j !== i) }))
+    setForm((f) => ({ ...f, items: recalc(f.items.map((it, j) => (j === i ? { ...it, ...patch } : it))) }))
+  const removeItem = (i: number) => setForm((f) => ({ ...f, items: recalc(f.items.filter((_, j) => j !== i)) }))
 
   useEffect(() => {
     if (!priceTouched) setForm((f) => ({ ...f, price: f.items.length ? itemsTotal(f.items) : null }))
@@ -191,11 +213,14 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
               <thead><tr><th>Concepto</th><th className="n">Cantidad</th><th className="n">Precio (€)</th><th className="n">Importe</th><th /></tr></thead>
               <tbody>
                 {form.items.map((it, i) => (
-                  <tr key={i}>
-                    <td><input value={it.description} onChange={(e) => setItem(i, { description: e.target.value })} /></td>
-                    <td><input className="n" type="number" step="0.5" min="0" value={it.quantity}
+                  <tr key={i} className={it.kind === 'ajuste' ? 'item-adjust' : ''}>
+                    <td>
+                      <input value={it.description} onChange={(e) => setItem(i, { description: e.target.value })} />
+                      {it.kind === 'ajuste' && <span className="muted small hint">sobre la cobertura ({formatMoney(coverage)})</span>}
+                    </td>
+                    <td><input className="n" type="number" step="0.5" min="0" value={it.quantity} disabled={it.kind === 'ajuste'}
                       onChange={(e) => setItem(i, { quantity: e.target.value as unknown as number })} /></td>
-                    <td><input className="n" type="number" step="0.01" min="0" value={it.unit_price}
+                    <td><input className="n" type="number" step="0.01" min="0" value={it.unit_price} disabled={it.kind === 'ajuste'}
                       onChange={(e) => setItem(i, { unit_price: e.target.value as unknown as number })} /></td>
                     <td className="n">{formatMoney((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))}</td>
                     <td><button type="button" className="ghost danger" onClick={() => removeItem(i)}>✕</button></td>
@@ -215,6 +240,13 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
         <label>Notas<textarea rows={3} value={form.notes ?? ''} onChange={set('notes')} /></label>
         {error && <p className="error">{error}</p>}
         {pasting && <PasteDataDialog target="session" onClose={() => setPasting(false)} onApply={applyPasted} />}
+        {askingExtra && (
+          <ExtraQuantityDialog tariff={askingExtra} onClose={() => setAskingExtra(null)}
+            onAdd={(quantity, unitPrice) => {
+              pushItem({ description: askingExtra.label, quantity, unit_price: unitPrice, kind: 'extra', percent: null })
+              setAskingExtra(null)
+            }} />
+        )}
         <footer>
           <button type="button" className="ghost" onClick={onClose}>Cancelar</button>
           <button type="submit" className="primary">Guardar</button>

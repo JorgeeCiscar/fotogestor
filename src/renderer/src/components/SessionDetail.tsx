@@ -421,7 +421,7 @@ export default function SessionDetail({ id, photoId, nav }: { id: number; photoI
 
       {dialog === 'edit' && <SessionForm session={session} onClose={() => setDialog(null)} onSaved={() => closeDialog('Evento guardado')} />}
       {dialog === 'gallery' && (
-        <GalleryDialog sessionId={id} pickCount={counts.pick} total={photos.length - counts.reject}
+        <GalleryDialog sessionId={id} pickCount={counts.pick} total={photos.length - counts.reject} pilots={eventPilots}
           onClose={() => setDialog(null)} onDone={closeDialog} />
       )}
       {dialog === 'selection' && <SelectionDialog sessionId={id} onClose={() => setDialog(null)} onDone={(m) => { closeDialog(m); changeFilter('client', '') }} />}

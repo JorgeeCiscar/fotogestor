@@ -123,7 +123,7 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
   const getSession = (id: number) => {
     const row = db.prepare(`${SESSION_SELECT} WHERE s.id = ?`).get(id)
     if (!row) return row
-    const items = db.prepare('SELECT id, description, quantity, unit_price FROM session_items WHERE session_id = ? ORDER BY position').all(id)
+    const items = db.prepare('SELECT id, description, quantity, unit_price, kind, percent FROM session_items WHERE session_id = ? ORDER BY position').all(id)
     return { ...(withTags(row) as object), items }
   }
 
@@ -189,14 +189,17 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
       for (const t of normalizeTags(s.tags ?? [])) ins.run(id, t)
 
       db.prepare('DELETE FROM session_items WHERE session_id = ?').run(id)
-      const insItem = db.prepare('INSERT INTO session_items (session_id, position, description, quantity, unit_price) VALUES (?, ?, ?, ?, ?)')
+      const insItem = db.prepare(`INSERT INTO session_items (session_id, position, description, quantity, unit_price, kind, percent)
+                                  VALUES (?, ?, ?, ?, ?, ?, ?)`)
       ;(s.items ?? []).forEach((it, i) => {
         const description = it.description?.trim()
         if (!description) return
         const quantity = Number(it.quantity)
         const unitPrice = Number(it.unit_price)
         if (!Number.isFinite(quantity) || !Number.isFinite(unitPrice)) throw new Error('Cantidad o precio no válidos en las partidas')
-        insItem.run(id!, i, description, quantity, unitPrice)
+        const kind = ['base', 'extra', 'ajuste'].includes(it.kind) ? it.kind : 'extra'
+        const percent = kind === 'ajuste' && Number.isFinite(Number(it.percent)) ? Number(it.percent) : null
+        insItem.run(id!, i, description, quantity, unitPrice, kind, percent)
       })
       return getSession(id)
     })

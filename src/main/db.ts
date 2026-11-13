@@ -191,6 +191,12 @@ export const MIGRATIONS: string[] = [
     PRIMARY KEY (photo_id, client_id)
   );
   CREATE INDEX idx_photo_pilots_client ON photo_pilots(client_id);
+  `,
+  // v9: las partidas distinguen cobertura, extra y ajustes en porcentaje.
+  `
+  ALTER TABLE session_items ADD COLUMN kind TEXT NOT NULL DEFAULT 'extra';
+  ALTER TABLE session_items ADD COLUMN percent REAL;
+  UPDATE session_items SET kind = 'base' WHERE position = 0;
   `
 ]
 

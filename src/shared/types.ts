@@ -138,12 +138,17 @@ export interface Tariff {
 }
 export type TariffInput = Omit<Tariff, 'id' | 'position'> & { id?: number; position?: number }
 
-/** Partida acordada en una sesión (copia de la tarifa en ese momento). */
+export type SessionItemKind = 'base' | 'extra' | 'ajuste'
+/** Partida acordada en un evento (copia de la tarifa en ese momento). */
 export interface SessionItem {
   id?: number
   description: string
   quantity: number
   unit_price: number
+  /** 'base': la cobertura del tipo de evento. 'ajuste': se calcula como % de la cobertura. */
+  kind: SessionItemKind
+  /** Porcentaje sobre la cobertura, solo en los ajustes. */
+  percent: number | null
 }
 
 export interface PilotRef { id: number; name: string; racing_number: string | null }
@@ -278,6 +283,8 @@ export type InvoiceInput = Pick<
 export interface GalleryExportOptions {
   scope: 'picks' | 'all'
   watermark: boolean
+  /** Si se indica, la galería lleva solo las fotos asignadas a ese piloto. */
+  pilotId?: number
 }
 
 export interface UpdateStatus {

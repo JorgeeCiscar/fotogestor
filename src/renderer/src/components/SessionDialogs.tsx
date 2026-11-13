@@ -4,8 +4,14 @@ import { api, errorMessage } from '../util'
 import Modal from './Modal'
 import TagInput from './TagInput'
 
-export function GalleryDialog({ sessionId, pickCount, total, onClose, onDone }: {
-  sessionId: number; pickCount: number; total: number; onClose: () => void; onDone: (msg: string) => void
+export function GalleryDialog({ sessionId, pickCount, total, pilots, onClose, onDone }: {
+  sessionId: number
+  pickCount: number
+  total: number
+  /** Pilotos con fotos en el evento, para mandar a cada uno solo las suyas. */
+  pilots: { id: number; name: string; racing_number: string | null; n: number }[]
+  onClose: () => void
+  onDone: (msg: string) => void
 }) {
   const [opts, setOpts] = useState<GalleryExportOptions>({ scope: pickCount ? 'picks' : 'all', watermark: true })
   const [busy, setBusy] = useState<{ done: number; total: number } | null>(null)
@@ -16,7 +22,7 @@ export function GalleryDialog({ sessionId, pickCount, total, onClose, onDone }: 
     setError(''); setBusy({ done: 0, total: 0 })
     try {
       const res = await api.gallery.export(sessionId, opts)
-      if (res) onDone(`Galería con ${res.count} fotos guardada en ${res.file}`)
+      if (res) onDone(`Galería con ${res.count} ${res.count === 1 ? 'foto' : 'fotos'} guardada en ${res.file}`)
       else setBusy(null)
     } catch (err) { setError(errorMessage(err)); setBusy(null) }
   }
@@ -30,6 +36,19 @@ export function GalleryDialog({ sessionId, pickCount, total, onClose, onDone }: 
           onChange={() => setOpts({ ...opts, scope: 'picks' })} /> Solo las elegidas ({pickCount})</label>
         <label className="radio"><input type="radio" checked={opts.scope === 'all'}
           onChange={() => setOpts({ ...opts, scope: 'all' })} /> Todas excepto las descartadas ({total})</label>
+        {pilots.length > 0 && (
+          <label>Para
+            <select value={opts.pilotId ?? 0} onChange={(e) => setOpts({ ...opts, pilotId: Number(e.target.value) || undefined })}>
+              <option value={0}>Todo el evento</option>
+              {pilots.map((p) => (
+                <option key={p.id} value={p.id}>
+                  Solo {p.racing_number ? `#${p.racing_number} ` : ''}{p.name} ({p.n} {p.n === 1 ? 'foto' : 'fotos'})
+                </option>
+              ))}
+            </select>
+            <span className="muted small hint">Con un piloto elegido, la galería lleva solo sus fotos asignadas.</span>
+          </label>
+        )}
         <label className="radio"><input type="checkbox" checked={opts.watermark}
           onChange={(e) => setOpts({ ...opts, watermark: e.target.checked })} /> Añadir marca de agua (texto en Ajustes)</label>
         {error && <p className="error">{error}</p>}

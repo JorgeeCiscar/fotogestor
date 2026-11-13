@@ -5,7 +5,7 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
 
 **Stack:** Electron · React · TypeScript · Vite (electron-vite) · SQLite (`node:sqlite`, integrado en Electron) · sharp · exifr
 
-## Funcionalidades (v0.13)
+## Funcionalidades (v0.14)
 
 - **Clientes** de tres tipos, que se eligen al darlos de alta:
   - **Piloto**: dorsal, categoría, moto/coche, equipo, nacionalidad, fecha de nacimiento, licencia y,
@@ -32,13 +32,14 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
   (opcionalmente una subcarpeta por sesión) o arrastrando las fotos al Explorador.
 - **Etiquetas** en fotos y sesiones, filtro por etiqueta y **búsqueda global** (`Ctrl+K`) de clientes,
   sesiones y fotos (nombre de archivo, etiqueta, cámara, objetivo).
-- **Galería para el cliente**: un único `.html` con las fotos (con marca de agua opcional). El cliente lo
+- **Galería para el cliente** (del evento entero o solo de un piloto): un único `.html` con las fotos (con marca de agua opcional). El cliente lo
   abre en el navegador, marca favoritas con ♥ y devuelve un código que se importa en la sesión.
 - **Contactos**: agenda de **circuitos** y **organizadores**, separada de los clientes, con acreditaciones,
   acceso y logística, contacto general y facturación. El circuito se enlaza con la sesión por el nombre
   escrito en «Lugar», y el organizador se elige en el formulario.
 - **Tarifas**: lista de precios propia, con un precio por tipo de sesión y extras sueltos, fijos o en
-  porcentaje (licencia comercial, descuentos, cancelaciones). Incluye un catálogo inicial de karting y
+  porcentaje (licencia comercial, descuentos, cancelaciones), que se calculan solo sobre la cobertura.
+  Los extras por unidades preguntan cantidad y precio al añadirlos. Incluye un catálogo inicial de karting y
   motorsport (`src/shared/defaultTariffs.ts`). Al crear una
   sesión se aplica la tarifa de su tipo, los extras se añaden a mano y el total pasa al precio de la
   sesión y a las partidas del presupuesto.

@@ -341,3 +341,5 @@ label.check input { width: auto; margin: 0; accent-color: var(--accent); }
 .pilot-row.on { background: #2e3440; }
 .pilot-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.items tr.item-adjust td:first-child { color: var(--muted); }
+.items tr.item-adjust .hint { display: block; font-size: 11px; }

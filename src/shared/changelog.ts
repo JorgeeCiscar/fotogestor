@@ -14,6 +14,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.14.0',
+    date: '2026-11-13',
+    title: 'Galería por piloto y tarifas más finas',
+    changes: [
+      'La galería se puede crear solo con las fotos de un piloto: él ve y elige únicamente las suyas.',
+      'Los extras por unidades (kilometraje, dietas, fotos extra, noches…) preguntan la cantidad y el precio al añadirlos, y calculan el importe.',
+      'Los porcentajes (licencia comercial, descuentos) se aplican solo sobre la cobertura del evento, nunca sobre los extras ni los gastos de viaje.',
+      'Si cambias el precio de la cobertura, esos porcentajes se recalculan solos.'
+    ]
+  },
+  {
     version: '0.13.0',
     date: '2026-11-13',
     title: 'Eventos, días y fotos por piloto',

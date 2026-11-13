@@ -543,17 +543,40 @@ Notas: Entregar las fotos el lunes`)
   check('extra añadido y precio actualizado', (await win.inputValue('.modal input[type=number]')) === '580',
     await win.inputValue('.modal input[type=number]'))
   check('total de la tarifa', (await win.textContent('.items-total')).includes('580,00'))
-  // Licencia comercial: 25 % sobre los 580 € que hay en ese momento = 145 €.
+  // Licencia comercial: 25 % SOLO de la cobertura (500 €), no de los 580 € con el extra.
   await win.selectOption('select[aria-label="Añadir extra"]', { label: 'Licencia comercial — 25 % sobre la cobertura' })
   await win.waitForTimeout(300)
-  check('extra en porcentaje calculado', (await win.textContent('.items-total')).includes('725,00'),
+  check('porcentaje solo sobre la cobertura', (await win.textContent('.items-total')).includes('705,00'),
     await win.textContent('.items-total'))
   const pctRow = await win.locator('.tariff-block .items tbody tr:nth-child(3) td:first-child input').inputValue()
-  check('extra en porcentaje: concepto', pctRow === 'Licencia comercial (25 %)', pctRow)
+  check('ajuste: concepto', pctRow === 'Licencia comercial (25 %)', pctRow)
+  check('ajuste: importe no editable', await win.isDisabled('.tariff-block .items tbody tr:nth-child(3) td:nth-child(3) input'))
+  // Al cambiar la cobertura, el porcentaje se recalcula solo: 600 → 150.
+  await win.fill('.tariff-block .items tbody tr:nth-child(1) td:nth-child(3) input', '600')
+  await win.waitForTimeout(300)
+  check('ajuste recalculado al cambiar la cobertura', (await win.textContent('.items-total')).includes('830,00'),
+    await win.textContent('.items-total'))
+  await win.fill('.tariff-block .items tbody tr:nth-child(1) td:nth-child(3) input', '500')
+  await win.waitForTimeout(200)
   // Se quita para que el resto de la prueba siga con los importes de antes.
   await win.click('.tariff-block .items tbody tr:nth-child(3) button')
   await win.waitForTimeout(300)
   check('extra quitado', (await win.textContent('.items-total')).includes('580,00'))
+
+  // Un extra por kilómetros pregunta cuántos.
+  await win.selectOption('select[aria-label="Añadir extra"]', { label: 'Kilometraje — 0,26 € por km' })
+  await win.waitForSelector('.modal:has-text("Kilometraje")')
+  check('extra por unidades: pregunta la cantidad', (await win.textContent('.modal')).includes('Kilómetros'),
+    (await win.textContent('.modal')).slice(0, 80))
+  await win.fill('.modal label:has-text("Kilómetros") input', '600')
+  check('extra por unidades: calcula el importe', (await win.textContent('.modal p:has-text("Importe")')).includes('156,00'),
+    await win.textContent('.modal p:has-text("Importe")'))
+  await win.click('.modal button:has-text("Añadir")')
+  await win.waitForTimeout(300)
+  check('extra por unidades añadido', (await win.textContent('.items-total')).includes('736,00'),
+    await win.textContent('.items-total'))
+  await win.click('.tariff-block .items tbody tr:nth-child(3) button')
+  await win.waitForTimeout(300)
   await shot('sesion-tarifa')
   await win.click('.modal button:has-text("Guardar")')
   await win.waitForSelector('.session-page')
@@ -674,6 +697,19 @@ Notas: Entregar las fotos el lunes`)
   await win.waitForTimeout(400)
   check('asignar: filtro por piloto', (await win.locator('.thumb').count()) === 2, String(await win.locator('.thumb').count()))
   await win.selectOption('select[aria-label="Filtrar por piloto"]', '0')
+
+  // Galería solo con las fotos de un piloto.
+  const pilotGallery = path.join(S, 'out', 'galeria-piloto.html')
+  await stubSave(pilotGallery)
+  await win.click('button:has-text("Galería cliente")')
+  await win.waitForSelector('.modal label:has-text("Para")')
+  await win.selectOption('.modal label:has-text("Para") select', { index: 1 })
+  await win.click('.modal label:has-text("Todas excepto") input')
+  await win.click('.modal button:has-text("Crear galería")')
+  // De sus 2 fotos, una está descartada: la galería nunca manda las descartadas.
+  check('galería del piloto', (await toast('Galería con')).includes('Galería con 1 foto'), await win.textContent('.toast'))
+  const html = fs.readFileSync(pilotGallery, 'utf8')
+  check('galería del piloto: lleva su nombre', html.includes('Marc Pérez'))
 
   // Las fotos asignadas salen en la ficha del piloto.
   await win.click('nav >> text=Clientes')

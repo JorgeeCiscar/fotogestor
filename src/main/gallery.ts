@@ -17,11 +17,12 @@ async function galleryImage(path: string, watermark: string): Promise<string> {
   return (await imageJob({ op: 'gallery', src: path, watermark })).dataUrl
 }
 
-export function galleryHtml(session: Session, settings: Settings, photos: { id: number; name: string; src: string }[]): string {
+export function galleryHtml(session: Session, settings: Settings, photos: { id: number; name: string; src: string }[], pilotName?: string): string {
+  const title = pilotName ? `${session.title} · ${pilotName}` : session.title
   const data = {
     galleryId: `${session.id}`,
     code: CODE_PREFIX,
-    title: session.title,
+    title,
     email: settings.business_email,
     business: settings.business_name,
     photos
@@ -62,6 +63,7 @@ export function galleryHtml(session: Session, settings: Settings, photos: { id: 
 <header>
   ${settings.logo_data_url ? `<img src="${settings.logo_data_url}" alt="">` : ''}
   <h1>${esc(session.title)}</h1>
+  ${pilotName ? `<p class="sub"><strong>${esc(pilotName)}</strong></p>` : ''}
   <p class="sub">Pulsa el corazón en tus fotos favoritas. Tu selección se guarda en este navegador aunque cierres la página.
   Cuando termines, pulsa <strong>Enviar selección</strong>.</p>
 </header>
@@ -141,12 +143,22 @@ export function registerGalleryIpc(db: DB, storage: LocalStorage): void {
     const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionId) as unknown as Session | undefined
     if (!session) throw new Error('La sesión no existe')
     const where = opts.scope === 'picks' ? "flag = 'pick'" : "(flag IS NULL OR flag = 'pick')"
-    const photos = db.prepare(`SELECT * FROM photos WHERE session_id = ? AND ${where} ORDER BY taken_at IS NULL, taken_at, file_name`)
-      .all(sessionId) as unknown as Photo[]
-    if (!photos.length) throw new Error(opts.scope === 'picks' ? 'No hay fotos elegidas (marca alguna con P)' : 'No hay fotos para la galería')
+    const pilot = opts.pilotId
+      ? (db.prepare('SELECT id, name FROM clients WHERE id = ?').get(opts.pilotId) as { id: number; name: string } | undefined)
+      : undefined
+    if (opts.pilotId && !pilot) throw new Error('El piloto no existe')
+    const onlyPilot = pilot ? 'AND EXISTS (SELECT 1 FROM photo_pilots pp WHERE pp.photo_id = photos.id AND pp.client_id = ?)' : ''
+    const params: (number | string)[] = pilot ? [sessionId, pilot.id] : [sessionId]
+    const photos = db.prepare(`SELECT * FROM photos WHERE session_id = ? AND ${where} ${onlyPilot}
+      ORDER BY taken_at IS NULL, taken_at, file_name`).all(...params) as unknown as Photo[]
+    if (!photos.length) {
+      throw new Error(pilot
+        ? `No hay fotos de ${pilot.name} con ese filtro`
+        : opts.scope === 'picks' ? 'No hay fotos elegidas (marca alguna con P)' : 'No hay fotos para la galería')
+    }
 
     const win = BrowserWindow.fromWebContents(e.sender)!
-    const safeName = session.title.replace(/[\\/:*?"<>|]+/g, '').trim() || 'galeria'
+    const safeName = `${session.title}${pilot ? ' - ' + pilot.name : ''}`.replace(/[\\/:*?"<>|]+/g, '').trim() || 'galeria'
     const res = await dialog.showSaveDialog(win, {
       title: 'Guardar galería para el cliente',
       defaultPath: join(app.getPath('documents'), `Galería - ${safeName}.html`),
@@ -161,7 +173,7 @@ export function registerGalleryIpc(db: DB, storage: LocalStorage): void {
       e.sender.send('gallery:progress', { done: items.length, total: photos.length })
       items.push({ id: p.id, name: p.file_name, src: await galleryImage(storage.resolve(p.preview_key), watermark) })
     }
-    await writeFile(res.filePath, galleryHtml(session, settings, items), 'utf8')
+    await writeFile(res.filePath, galleryHtml(session, settings, items, pilot?.name), 'utf8')
     return { file: res.filePath, count: items.length }
   })
 
