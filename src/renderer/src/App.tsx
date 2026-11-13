@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Dashboard from './components/Dashboard'
 import ClientsView from './components/ClientsView'
+import ClientDetail from './components/ClientDetail'
 import SessionsView from './components/SessionsView'
 import SessionDetail from './components/SessionDetail'
 import LibraryView from './components/LibraryView'
@@ -13,11 +14,12 @@ import WhatsNew from './components/WhatsNew'
 export type View =
   | { name: 'dashboard' }
   | { name: 'clients' }
-  | { name: 'sessions'; clientId?: number }
-  | { name: 'library' }
+  | { name: 'client'; id: number }
+  | { name: 'sessions'; clientId?: number; create?: boolean }
+  | { name: 'library'; clientId?: number }
   | { name: 'session'; id: number; photoId?: number }
   | { name: 'search'; q?: string }
-  | { name: 'invoices'; openId?: number; newForSession?: number }
+  | { name: 'invoices'; openId?: number; newForSession?: number; newForClient?: number }
   | { name: 'settings' }
 
 const NAV: [View['name'], string][] = [
@@ -33,7 +35,7 @@ const NAV: [View['name'], string][] = [
 export default function App() {
   const [view, setView] = useState<View>({ name: 'dashboard' })
   const nav = (v: View) => setView(v)
-  const active = view.name === 'session' ? 'sessions' : view.name
+  const active = view.name === 'session' ? 'sessions' : view.name === 'client' ? 'clients' : view.name
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -62,11 +64,12 @@ export default function App() {
       <main className="content">
         {view.name === 'dashboard' && <Dashboard nav={nav} />}
         {view.name === 'clients' && <ClientsView nav={nav} />}
-        {view.name === 'sessions' && <SessionsView nav={nav} clientId={view.clientId} />}
-        {view.name === 'library' && <LibraryView nav={nav} />}
+        {view.name === 'client' && <ClientDetail key={view.id} id={view.id} nav={nav} />}
+        {view.name === 'sessions' && <SessionsView nav={nav} clientId={view.clientId} create={view.create} />}
+        {view.name === 'library' && <LibraryView key={view.clientId ?? 0} nav={nav} clientId={view.clientId} />}
         {view.name === 'session' && <SessionDetail key={view.id} id={view.id} photoId={view.photoId} nav={nav} />}
         {view.name === 'search' && <SearchView nav={nav} initial={view.q} />}
-        {view.name === 'invoices' && <InvoicesView nav={nav} openId={view.openId} newForSession={view.newForSession} />}
+        {view.name === 'invoices' && <InvoicesView nav={nav} openId={view.openId} newForSession={view.newForSession} newForClient={view.newForClient} />}
         {view.name === 'settings' && <SettingsView />}
       </main>
       <WhatsNew />

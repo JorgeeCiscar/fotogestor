@@ -98,6 +98,13 @@ export function registerIpc(db: DB, storage: LocalStorage): void {
 
   // ---------- Clientes ----------
   ipcMain.handle('clients:list', () => db.prepare(`${CLIENT_SELECT} ORDER BY c.name COLLATE NOCASE`).all())
+  ipcMain.handle('clients:get', (_e, id: number) => {
+    const client = db.prepare(`${CLIENT_SELECT} WHERE c.id = ?`).get(id)
+    if (!client) return null
+    const pilots = db.prepare(`SELECT id, name, racing_number FROM clients WHERE team_id = ?
+                               ORDER BY CAST(racing_number AS INTEGER), name COLLATE NOCASE`).all(id)
+    return { ...client, pilots }
+  })
   ipcMain.handle('clients:save', (_e, c: ClientInput) => saveClient(db, c))
   ipcMain.handle('clients:remove', (_e, id: number) => {
     db.prepare('DELETE FROM clients WHERE id = ?').run(id)

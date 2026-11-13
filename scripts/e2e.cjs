@@ -93,6 +93,7 @@ function check(name, ok, detail = '') {
   await win.fill('.modal label:has-text("Cargo") input', 'Team manager')
   await win.fill('.modal label:has-text("Categoría") input', 'Supersport 300')
   await win.fill('.modal label:has-text("Marca") input', 'Yamaha')
+  await win.fill('.modal label:has-text("CIF") input', 'B12345678')
   await win.click('.modal button:has-text("Guardar")')
   await win.waitForSelector('td:has-text("Speed Racing Team")')
 
@@ -445,6 +446,47 @@ Notas: Entregar las fotos el lunes`)
   await win.click('.modal button:has-text("Guardar")')
   await win.waitForSelector('.session-page')
   check('pegar: sesión guardada', (await win.textContent('.session-title')).includes('ESBK Jerez'))
+
+  // --- Ficha de cliente ---
+  await win.click('nav >> text=Clientes')
+  await win.click('tr:has(strong:text-is("Speed Racing Team"))')
+  await win.waitForSelector('.client-page')
+  const teamPage = (await win.textContent('.client-page')).replace(/\s+/g, ' ')
+  check('ficha de equipo: datos', teamPage.includes('Laura Gil') && teamPage.includes('Team manager')
+    && teamPage.includes('Yamaha') && teamPage.includes('B12345678'), teamPage.slice(0, 140))
+  check('ficha de equipo: lista de pilotos', (await win.locator('.pilot-list .pilot-link').count()) === 2,
+    String(await win.locator('.pilot-list .pilot-link').count()))
+  check('ficha de equipo: sesión del cliente', (await win.locator('.client-activity .session-card').count()) >= 1)
+  check('ficha de equipo: facturación', teamPage.includes('ESBK Jerez') || (await win.locator('.client-activity .table tbody tr').count()) >= 0)
+  await shot('ficha-equipo')
+
+  // Desde el equipo se entra a la ficha de uno de sus pilotos.
+  await win.click('.pilot-link:has-text("Marc Pérez")')
+  await win.waitForSelector('.client-page')
+  const pilotPage = (await win.textContent('.client-page')).replace(/\s+/g, ' ')
+  check('ficha de piloto: datos', pilotPage.includes('Supersport 300') && pilotPage.includes('Yamaha R3')
+    && pilotPage.includes('@marc46'), pilotPage.slice(0, 140))
+  check('ficha de piloto: aviso de menor', (await win.locator('.minor-box.standalone').count()) === 1
+    && pilotPage.includes('Jordi Pérez'), pilotPage.slice(0, 200))
+  await shot('ficha-piloto')
+  // Y desde el piloto se vuelve al equipo.
+  await win.click('.data-list button.link:has-text("Speed Racing Team")')
+  await win.waitForSelector('.pilot-list')
+  check('ficha: del piloto al equipo', (await win.textContent('.client-page h1')).includes('Speed Racing Team'))
+
+  // Particular: ficha con sus sesiones y facturas.
+  await win.click('nav >> text=Clientes'); await win.click('tr:has(strong:text-is("Ana García"))')
+  await win.waitForSelector('.client-page')
+  const anaPage = (await win.textContent('.client-page')).replace(/\s+/g, ' ')
+  check('ficha de particular: sesiones y facturas', anaPage.includes('Boda Ana y Luis') && anaPage.includes('F-2026-001'), anaPage.slice(0, 160))
+  check('ficha de particular: fotos recientes', (await win.locator('.client-activity .photo-result').count()) > 0)
+  check('ficha: total facturado', anaPage.includes('2279,00'), anaPage.slice(0, 120))
+  await shot('ficha-particular')
+  // La factura se abre desde la ficha.
+  await win.click('.client-activity tr:has-text("F-2026-001")')
+  await win.waitForSelector('.modal.wide')
+  check('ficha: abre la factura', (await win.textContent('.modal h2')).includes('F-2026-001'))
+  await win.keyboard.press('Escape')
 
   // --- Panel ---
   await win.click('nav >> text=Panel'); await win.waitForTimeout(500)

@@ -34,7 +34,7 @@ export default function SearchView({ nav, initial = '' }: { nav: (v: View) => vo
           <h2>Clientes ({res.clients.length})</h2>
           <div className="result-list">
             {res.clients.map((c) => (
-              <button key={c.id} className="result" onClick={() => nav({ name: 'sessions', clientId: c.id })}>
+              <button key={c.id} className="result" onClick={() => nav({ name: 'client', id: c.id })}>
                 <strong>{c.name}</strong>
                 <span className="muted small">{[c.email, c.phone].filter(Boolean).join(' · ')} · {c.session_count ?? 0} sesiones</span>
               </button>

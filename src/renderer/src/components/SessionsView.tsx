@@ -6,14 +6,14 @@ import { api, STATUS_LABEL } from '../util'
 import SessionCard from './SessionCard'
 import SessionForm from './SessionForm'
 
-export default function SessionsView({ nav, clientId }: { nav: (v: View) => void; clientId?: number }) {
+export default function SessionsView({ nav, clientId, create }: { nav: (v: View) => void; clientId?: number; create?: boolean }) {
   const [sessions, setSessions] = useState<Session[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [status, setStatus] = useState<SessionStatus | ''>('')
   const [client, setClient] = useState<number | ''>(clientId ?? '')
   const [championship, setChampionship] = useState('')
   const [championships, setChampionships] = useState<string[]>([])
-  const [creating, setCreating] = useState(false)
+  const [creating, setCreating] = useState(!!create)
 
   useEffect(() => { api.clients.list().then(setClients); api.championships().then(setChampionships) }, [])
   useEffect(() => {

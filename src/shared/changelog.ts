@@ -14,6 +14,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.9.0',
+    date: '2026-11-13',
+    title: 'Ficha de cliente',
+    changes: [
+      'Pulsa un cliente en la lista y se abre su ficha: pilotos, equipos y particulares.',
+      'Muestra todos sus datos, sus sesiones, sus fotos recientes y sus presupuestos y facturas.',
+      'Resumen de sesiones, fotografías y total facturado; en los equipos, la lista de sus pilotos.',
+      'Se navega entre fichas: del piloto a su equipo y del equipo a cada piloto.',
+      'Desde la ficha puedes crear una sesión o un presupuesto para ese cliente.'
+    ]
+  },
+  {
     version: '0.8.1',
     date: '2026-11-13',
     title: 'Pegar datos: entiende mensajes más desordenados',

@@ -15,13 +15,13 @@ const SORTS: [LibrarySort, string][] = [
 ]
 
 /** Fototeca: todas las fotos de todas las sesiones, con filtros, selección y copia. */
-export default function LibraryView({ nav }: { nav: (v: View) => void }) {
+export default function LibraryView({ nav, clientId }: { nav: (v: View) => void; clientId?: number }) {
   const [sessions, setSessions] = useState<Session[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [tags, setTags] = useState<string[]>([])
   const [sessionIds, setSessionIds] = useState<number[]>([])
   const [sessionQuery, setSessionQuery] = useState('')
-  const [filter, setFilter] = useState<Omit<LibraryFilter, 'sessionIds'>>({ sort: 'date_desc' })
+  const [filter, setFilter] = useState<Omit<LibraryFilter, 'sessionIds'>>({ sort: 'date_desc', clientId })
   const [q, setQ] = useState('')
   const [photos, setPhotos] = useState<LibraryPhoto[]>([])
   const [total, setTotal] = useState(0)

@@ -46,6 +46,10 @@ export interface Client {
   pilot_count?: number
   pilot_names?: string | null
 }
+export interface PilotRef { id: number; name: string; racing_number: string | null }
+/** Cliente con sus pilotos (si es un equipo), para la ficha. */
+export type ClientDetail = Client & { pilots: PilotRef[] }
+
 export type ClientInput = Omit<Client, 'id' | 'created_at' | 'session_count' | 'team_name' | 'pilot_count' | 'pilot_names' | 'kind'> & {
   id?: number
   kind: ClientKind
@@ -219,6 +223,7 @@ export interface CopyProgress { done: number; total: number }
 export interface Api {
   clients: {
     list(): Promise<Client[]>
+    get(id: number): Promise<ClientDetail | null>
     save(c: ClientInput): Promise<Client>
     remove(id: number): Promise<void>
   }

@@ -5,7 +5,7 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
 
 **Stack:** Electron · React · TypeScript · Vite (electron-vite) · SQLite (`node:sqlite`, integrado en Electron) · sharp · exifr
 
-## Funcionalidades (v0.8)
+## Funcionalidades (v0.9)
 
 - **Clientes** de tres tipos, que se eligen al darlos de alta:
   - **Piloto**: dorsal, categoría, moto/coche, equipo, nacionalidad, fecha de nacimiento, licencia y,
@@ -13,6 +13,8 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
   - **Equipo**: persona de contacto y cargo, categoría, marca, web y lista de sus pilotos.
   - **Particular**: persona ajena a los circuitos.
   Todos tienen contacto (email, teléfono, Instagram), NIF y dirección para facturar, y notas.
+  Cada cliente tiene su **ficha**: datos, sesiones, fotos recientes, presupuestos y facturas,
+  total facturado y navegación entre piloto y equipo.
 - **Sesiones**: cliente, tipo (Carrera, Entrenamientos, Track day, Boda…), fecha, lugar, precio, notas, etiquetas y estado
   (planificada → realizada → en edición → entregada). Las de tipo **Carrera** llevan además el
   **campeonato**, por el que se puede filtrar y buscar.

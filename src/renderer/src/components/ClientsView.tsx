@@ -64,22 +64,22 @@ export default function ClientsView({ nav }: { nav: (v: View) => void }) {
           <thead><tr><th>Cliente</th><th>Tipo</th><th>Contacto</th><th>Sesiones</th><th /></tr></thead>
           <tbody>
             {filtered.map((c) => (
-              <tr key={c.id}>
+              <tr key={c.id} className="clickable" onClick={() => nav({ name: 'client', id: c.id })}>
                 <td>
                   <strong>{c.kind === 'piloto' && c.racing_number && <span className="dorsal">{c.racing_number}</span>}{c.name}</strong>
                   {details(c) && <div className="muted small">{details(c)}</div>}
                   {c.kind === 'equipo' && c.pilot_names && <div className="muted small">Pilotos: {c.pilot_names}</div>}
                 </td>
                 <td>{c.kind ? <span className={`kind-badge kind-${c.kind}`}>{CLIENT_KIND_ICON[c.kind]} {CLIENT_KIND_LABEL[c.kind]}</span>
-                  : <button className="link" onClick={() => setEditing(c)}>Indicar tipo</button>}</td>
+                  : <button className="link" onClick={(e) => { e.stopPropagation(); setEditing(c) }}>Indicar tipo</button>}</td>
                 <td className="small">
                   {[c.email, c.phone].filter(Boolean).join(' · ') || (c.instagram ? '' : '—')}
                   {c.instagram && <div className="muted">@{c.instagram}</div>}
                 </td>
-                <td><button className="link" onClick={() => nav({ name: 'sessions', clientId: c.id })}>{c.session_count ?? 0}</button></td>
+                <td><button className="link" onClick={(e) => { e.stopPropagation(); nav({ name: 'sessions', clientId: c.id }) }}>{c.session_count ?? 0}</button></td>
                 <td className="actions">
-                  <button className="ghost" onClick={() => setEditing(c)}>Editar</button>
-                  <button className="ghost danger" onClick={() => remove(c)}>Eliminar</button>
+                  <button className="ghost" onClick={(e) => { e.stopPropagation(); setEditing(c) }}>Editar</button>
+                  <button className="ghost danger" onClick={(e) => { e.stopPropagation(); remove(c) }}>Eliminar</button>
                 </td>
               </tr>
             ))}

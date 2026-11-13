@@ -10,7 +10,7 @@ const toDraft = (inv: Invoice): InvoiceDraft => ({
   notes: inv.notes ?? '', items: inv.items
 })
 
-export default function InvoicesView({ openId, newForSession }: { nav: (v: View) => void; openId?: number; newForSession?: number }) {
+export default function InvoicesView({ openId, newForSession, newForClient }: { nav: (v: View) => void; openId?: number; newForSession?: number; newForClient?: number }) {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [kind, setKind] = useState<InvoiceKind | ''>('')
   const [editing, setEditing] = useState<InvoiceDraft | null>(null)
@@ -26,6 +26,11 @@ export default function InvoicesView({ openId, newForSession }: { nav: (v: View)
     Promise.all([api.sessions.get(newForSession), api.settings.get()]).then(([s, st]) =>
       setEditing(newDraft('presupuesto', st.default_tax_rate, st.default_irpf_rate, s)))
   }, [newForSession])
+
+  useEffect(() => {
+    if (!newForClient) return
+    api.settings.get().then((st) => setEditing({ ...newDraft('presupuesto', st.default_tax_rate, st.default_irpf_rate), client_id: newForClient }))
+  }, [newForClient])
 
   async function create(k: InvoiceKind) {
     const st = await api.settings.get()

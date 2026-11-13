@@ -9,7 +9,7 @@ function subscribe<T>(channel: string, cb: (p: T) => void): () => void {
 }
 
 const api: Api = {
-  clients: { list: invoke('clients:list'), save: invoke('clients:save'), remove: invoke('clients:remove') },
+  clients: { list: invoke('clients:list'), get: invoke('clients:get'), save: invoke('clients:save'), remove: invoke('clients:remove') },
   sessions: {
     list: invoke('sessions:list'), get: invoke('sessions:get'), save: invoke('sessions:save'), remove: invoke('sessions:remove')
   },
