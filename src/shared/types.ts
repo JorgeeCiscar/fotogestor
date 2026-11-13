@@ -9,6 +9,7 @@ export type Flag = 'pick' | 'reject' | null
 export type ClientKind = 'piloto' | 'equipo' | 'particular'
 export const CLIENT_KINDS: ClientKind[] = ['piloto', 'equipo', 'particular']
 
+
 /** Campos propios de cada tipo de cliente (el resto se guardan vacíos). */
 export const PILOT_FIELDS = ['racing_number', 'category', 'vehicle', 'team_id', 'nationality', 'birth_date', 'license_number', 'guardian_name', 'guardian_phone'] as const
 export const TEAM_FIELDS = ['contact_name', 'contact_role', 'category', 'brand', 'website'] as const

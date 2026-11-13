@@ -1,6 +1,6 @@
 {
   "name": "fotogestor",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Gestión de fotografías para fotógrafos profesionales",
   "main": "out/main/index.js",
   "scripts": {
@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test:e2e": "electron-vite build && node scripts/e2e.cjs",
     "dist:win": "npm i --no-save --force @img/sharp-win32-x64@0.33.5 && electron-vite build && electron-builder --win --x64 --publish never",
-    "release": "npm version patch --no-git-tag-version && git commit -am \"Nueva versión\" && git push"
+    "release": "npm version patch --no-git-tag-version && git commit -am \"Nueva versión\" && git push",
+    "test:unit": "node --experimental-strip-types --test src/shared/*.test.ts",
+    "test": "npm run typecheck && npm run test:unit && npm run test:e2e"
   },
   "author": "FotoGestor",
   "devDependencies": {

@@ -14,6 +14,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.8.0',
+    date: '2026-11-13',
+    title: 'Pegar datos y que se rellenen solos',
+    changes: [
+      'Botón «Pegar datos…» al crear o editar un cliente y al crear una sesión.',
+      'Pega un correo, un WhatsApp o una ficha de inscripción y se reconocen el nombre, dorsal, equipo, categoría, moto, licencia, email, teléfono, Instagram, NIF, fecha, lugar, campeonato y precio.',
+      'Antes de aplicarlos se muestran en una lista para que los revises y descartes lo que no quieras.',
+      'Si el texto es de un piloto o de un equipo, se elige el tipo de cliente solo; el equipo se enlaza con el que ya tengas dado de alta.'
+    ]
+  },
+  {
     version: '0.7.0',
     date: '2026-11-13',
     title: 'Nuevo aspecto',

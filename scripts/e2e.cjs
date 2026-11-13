@@ -373,6 +373,79 @@ function check(name, ok, detail = '') {
   await win.fill('.search-big', 'velocidad'); await win.waitForTimeout(500)
   check('carrera: búsqueda por campeonato', (await win.locator('.session-card').count()) === 1)
 
+  // --- Pegar datos: cliente creado desde un mensaje suelto ---
+  await win.click('nav >> text=Clientes'); await win.click('text=+ Nuevo cliente')
+  await win.click('.picker-footer button:has-text("Pegar datos")')
+  await win.fill('.paste-dialog textarea', `Hola Jorge! Te paso los datos para la inscripción:
+Nombre y apellidos: Nuria Blanco Ruiz
+Dorsal: 23
+Categoría: Supersport 300
+Moto: Kawasaki Ninja 400
+Equipo: Speed Racing Team
+Fecha de nacimiento: 02/07/2004
+Licencia: RFME-554433
+Email: nuria.blanco@example.com
+Teléfono: 622 334 455
+Instagram: @nuriablanco23
+DNI: 45678912P
+Un saludo!`)
+  await win.waitForSelector('.detected tr')
+  check('pegar: datos reconocidos', (await win.locator('.detected tr').count()) === 11, String(await win.locator('.detected tr').count()))
+  await shot('pegar-dialogo')
+  await win.click('.paste-dialog button:has-text("Aplicar")')
+  await win.waitForSelector('.kind-switch')
+  check('pegar: detecta que es un piloto', (await win.locator('.kind-switch .segmented button.active').textContent()).includes('Piloto'))
+  const pasted = {
+    name: await win.inputValue('.modal label:has-text("Nombre y apellidos") input'),
+    dorsal: await win.inputValue('.modal label:has-text("Dorsal") input'),
+    moto: await win.inputValue('.modal label:has-text("Moto") input'),
+    equipo: await win.inputValue('.modal label:has-text("Equipo") select'),
+    nacimiento: await win.inputValue('.modal input[type=date]'),
+    email: await win.inputValue('.modal input[type=email]'),
+    tel: await win.inputValue('.modal label:has-text("Teléfono") input'),
+    ig: await win.inputValue('.modal label:has-text("Instagram") input'),
+    nif: await win.inputValue('.modal label:has-text("NIF") input')
+  }
+  check('pegar: formulario relleno', pasted.name === 'Nuria Blanco Ruiz' && pasted.dorsal === '23'
+    && pasted.moto === 'Kawasaki Ninja 400' && pasted.nacimiento === '2004-07-02'
+    && pasted.email === 'nuria.blanco@example.com' && pasted.tel === '622 334 455'
+    && pasted.ig === 'nuriablanco23' && pasted.nif === '45678912P', JSON.stringify(pasted))
+  check('pegar: equipo enlazado con el cliente existente', pasted.equipo !== '', `team_id=${pasted.equipo}`)
+  await shot('pegar-datos')
+  await win.click('.modal button:has-text("Guardar")')
+  await win.waitForSelector('td:has-text("Nuria Blanco Ruiz")')
+  const nuriaRow = (await win.textContent('tr:has(strong:text-is("Nuria Blanco Ruiz"))')).replace(/\s+/g, ' ')
+  check('pegar: cliente guardado con sus datos', nuriaRow.includes('Speed Racing Team') && nuriaRow.includes('Kawasaki'), nuriaRow)
+
+  // --- Pegar datos: sesión descrita en un correo ---
+  await win.click('nav >> text=Sesiones'); await win.click('text=+ Nueva sesión')
+  await win.click('.paste-row button:has-text("Pegar datos")')
+  await win.fill('.paste-dialog textarea', `Sesión: ESBK Jerez - Carrera 2
+Cliente: Speed Racing Team
+Campeonato: Campeonato de España de Velocidad
+Fecha: 18 de octubre de 2026
+Lugar: Circuito de Jerez
+Precio: 1.250 €
+Notas: Entregar las fotos el lunes`)
+  await win.waitForSelector('.detected tr')
+  await win.click('.paste-dialog button:has-text("Aplicar")')
+  await win.waitForTimeout(300)
+  const ses = {
+    title: await win.inputValue('.modal label:has-text("Título") input'),
+    tipo: await win.inputValue('.modal label:has-text("Tipo") select'),
+    camp: await win.inputValue('.race-field input'),
+    fecha: await win.inputValue('.modal input[type=date]'),
+    lugar: await win.inputValue('.modal label:has-text("Lugar") input'),
+    precio: await win.inputValue('.modal input[type=number]'),
+    cliente: await win.inputValue('.modal label:has-text("Cliente") select')
+  }
+  check('pegar: sesión rellena', ses.title === 'ESBK Jerez - Carrera 2' && ses.tipo === 'Carrera'
+    && ses.camp === 'Campeonato de España de Velocidad' && ses.fecha === '2026-10-18'
+    && ses.lugar === 'Circuito de Jerez' && ses.precio === '1250' && ses.cliente !== '', JSON.stringify(ses))
+  await win.click('.modal button:has-text("Guardar")')
+  await win.waitForSelector('.session-page')
+  check('pegar: sesión guardada', (await win.textContent('.session-title')).includes('ESBK Jerez'))
+
   // --- Panel ---
   await win.click('nav >> text=Panel'); await win.waitForTimeout(500)
   const panel = await win.textContent('.page')

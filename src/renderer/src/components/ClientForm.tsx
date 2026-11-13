@@ -1,8 +1,10 @@
 import { FormEvent, useEffect, useState } from 'react'
 import type { Client, ClientInput, ClientKind } from '../../../shared/types'
 import { CLIENT_KINDS } from '../../../shared/types'
+import { guessClientKind } from '../../../shared/parseData'
 import { ageFrom, api, CLIENT_KIND_ICON, CLIENT_KIND_LABEL, errorMessage } from '../util'
 import Modal from './Modal'
+import PasteDataDialog from './PasteDataDialog'
 
 const KIND_HELP: Record<ClientKind, string> = {
   piloto: 'Corre en circuito: dorsal, categoría, moto/coche, equipo…',
@@ -35,6 +37,7 @@ export default function ClientForm({ client, defaultKind, onClose, onSaved }: {
   const [form, setForm] = useState<ClientInput>(() => emptyInput(client, client?.kind ?? defaultKind))
   const [teams, setTeams] = useState<Client[]>([])
   const [error, setError] = useState('')
+  const [pasting, setPasting] = useState(false)
   useEffect(() => { api.clients.list().then((cs) => setTeams(cs.filter((c) => c.kind === 'equipo' && c.id !== client?.id))) }, [client?.id])
 
   const set = (k: keyof ClientInput) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value })
@@ -49,6 +52,23 @@ export default function ClientForm({ client, defaultKind, onClose, onSaved }: {
     } catch (err) {
       setError(errorMessage(err))
     }
+  }
+
+  /** Vuelca en el formulario los datos reconocidos en el texto pegado. */
+  function applyPasted(values: Record<string, string>, text: string) {
+    setPasting(false)
+    const { team, ...rest } = values
+    const next: Partial<ClientInput> = { ...rest }
+    // El equipo viene por su nombre: se busca entre los equipos ya dados de alta.
+    if (team) {
+      const match = teams.find((t) => t.name.localeCompare(team, 'es', { sensitivity: 'base' }) === 0)
+        ?? teams.find((t) => t.name.toLowerCase().includes(team.toLowerCase()))
+      if (match) next.team_id = match.id
+      else next.notes = [form.notes, `Equipo indicado: ${team}`].filter(Boolean).join('\n')
+    }
+    const detectedKind = kind ?? guessClientKind(text, Object.entries(values).map(([k, v]) => ({ key: k, label: k, value: v })))
+    setKind(detectedKind)
+    setForm((f) => ({ ...f, ...next, kind: detectedKind }))
   }
 
   const title = client ? `Editar ${kind ? CLIENT_KIND_LABEL[kind].toLowerCase() : 'cliente'}` : kind ? `Nuevo ${CLIENT_KIND_LABEL[kind].toLowerCase()}` : 'Nuevo cliente'
@@ -66,6 +86,11 @@ export default function ClientForm({ client, defaultKind, onClose, onSaved }: {
             </button>
           ))}
         </div>
+        <footer className="picker-footer">
+          <button type="button" className="ghost" onClick={() => setPasting(true)}>📋 Pegar datos…</button>
+          <span className="muted small">Si te han enviado los datos por correo o WhatsApp, pégalos y se rellenan solos.</span>
+        </footer>
+        {pasting && <PasteDataDialog target="client" onClose={() => setPasting(false)} onApply={applyPasted} />}
       </Modal>
     )
   }
@@ -82,6 +107,8 @@ export default function ClientForm({ client, defaultKind, onClose, onSaved }: {
               </button>
             ))}
           </div>
+          <span className="spacer" />
+          <button type="button" className="ghost" onClick={() => setPasting(true)}>📋 Pegar datos…</button>
         </div>
 
         <div className="row">
@@ -158,6 +185,7 @@ export default function ClientForm({ client, defaultKind, onClose, onSaved }: {
           <button type="button" className="ghost" onClick={onClose}>Cancelar</button>
           <button type="submit" className="primary">Guardar</button>
         </footer>
+        {pasting && <PasteDataDialog target="client" onClose={() => setPasting(false)} onApply={applyPasted} />}
       </form>
     </Modal>
   )

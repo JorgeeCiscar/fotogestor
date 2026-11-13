@@ -47,6 +47,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      - name: Pruebas del analizador de datos pegados
+        run: npm run test:unit
       - run: npx playwright install chromium
       - name: Prueba de extremo a extremo
         run: npm run test:e2e

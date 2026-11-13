@@ -5,7 +5,7 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
 
 **Stack:** Electron · React · TypeScript · Vite (electron-vite) · SQLite (`node:sqlite`, integrado en Electron) · sharp · exifr
 
-## Funcionalidades (v0.6)
+## Funcionalidades (v0.8)
 
 - **Clientes** de tres tipos, que se eligen al darlos de alta:
   - **Piloto**: dorsal, categoría, moto/coche, equipo, nacionalidad, fecha de nacimiento, licencia y,
@@ -31,6 +31,9 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
 - **Presupuestos y facturas**: datos del negocio y logotipo, partidas, IVA y retención de IRPF,
   estados, conversión de presupuesto a factura y PDF. Las facturas reciben número correlativo
   (`F-2026-001`) al emitirse y, una vez emitidas, no se pueden editar ni eliminar.
+- **Pegar datos**: en los formularios de cliente y de sesión, un botón analiza un texto pegado
+  (correo, WhatsApp, ficha de inscripción) y rellena los campos. El analizador es local
+  (`src/shared/parseData.ts`, con pruebas en `parseData.test.ts`): no usa internet ni servicios externos.
 - **Panel** con próximas sesiones, facturado en el año y pendiente de cobro.
 - **Actualizaciones automáticas** desde GitHub Releases, con una ventana de **novedades** al abrir
   la app después de actualizarse (las entradas están en `src/shared/changelog.ts`).
@@ -41,7 +44,9 @@ clientes, sesiones, selección de fotos, galerías para clientes y facturación.
 npm install        # no compila nada: todo usa binarios precompilados
 npm run dev        # arranca la app con recarga en caliente
 npm run typecheck
+npm run test:unit  # pruebas del analizador de datos pegados
 npm run test:e2e   # prueba de extremo a extremo con Playwright
+npm test           # las tres: tipos, unitarias y E2E
 npm run dist:win   # genera dist/FotoGestor-Setup-<versión>.exe
 ```
 

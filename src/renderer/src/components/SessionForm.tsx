@@ -3,6 +3,7 @@ import type { Client, Session, SessionInput } from '../../../shared/types'
 import { RACE_TYPE, SESSION_STATUSES } from '../../../shared/types'
 import { api, errorMessage, SESSION_TYPES, STATUS_LABEL } from '../util'
 import Modal from './Modal'
+import PasteDataDialog from './PasteDataDialog'
 import TagInput from './TagInput'
 
 export default function SessionForm({ session, defaultClientId, onClose, onSaved }: {
@@ -27,8 +28,25 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
   })
   const [championships, setChampionships] = useState<string[]>([])
   const [error, setError] = useState('')
+  const [pasting, setPasting] = useState(false)
   useEffect(() => { api.clients.list().then(setClients); api.championships().then(setChampionships) }, [])
   const set = (k: keyof SessionInput) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value })
+
+  /** Vuelca en el formulario los datos reconocidos en el texto pegado. */
+  function applyPasted(values: Record<string, string>) {
+    setPasting(false)
+    const { clientName, price, tags, ...rest } = values
+    const next: Record<string, unknown> = { ...rest }
+    if (price !== undefined) next.price = Number(price)
+    if (tags) next.tags = [...new Set([...form.tags, ...tags.split(/[,;]+/).map((t) => t.trim()).filter(Boolean)])]
+    if (clientName) {
+      const match = clients.find((c) => c.name.localeCompare(clientName, 'es', { sensitivity: 'base' }) === 0)
+        ?? clients.find((c) => c.name.toLowerCase().includes(clientName.toLowerCase()))
+      if (match) next.client_id = match.id
+      else next.notes = [values.notes ?? form.notes, `Cliente indicado: ${clientName}`].filter(Boolean).join('\n')
+    }
+    setForm((f) => ({ ...f, ...next } as typeof f))
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -42,7 +60,10 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
   return (
     <Modal title={session ? 'Editar sesión' : 'Nueva sesión'} onClose={onClose}>
       <form onSubmit={submit} className="form">
-        <label>Título *<input autoFocus value={form.title} onChange={set('title')} placeholder="Boda Ana y Luis" /></label>
+        <div className="row paste-row">
+          <label>Título *<input autoFocus value={form.title} onChange={set('title')} placeholder="Boda Ana y Luis" /></label>
+          <button type="button" className="ghost" onClick={() => setPasting(true)}>📋 Pegar datos…</button>
+        </div>
         <div className="row">
           <label>Cliente
             <select value={form.client_id ?? ''} onChange={(e) => setForm({ ...form, client_id: e.target.value ? Number(e.target.value) : null })}>
@@ -86,6 +107,7 @@ export default function SessionForm({ session, defaultClientId, onClose, onSaved
         </label>
         <label>Notas<textarea rows={3} value={form.notes ?? ''} onChange={set('notes')} /></label>
         {error && <p className="error">{error}</p>}
+        {pasting && <PasteDataDialog target="session" onClose={() => setPasting(false)} onApply={applyPasted} />}
         <footer>
           <button type="button" className="ghost" onClick={onClose}>Cancelar</button>
           <button type="submit" className="primary">Guardar</button>

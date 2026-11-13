@@ -275,3 +275,16 @@ label.check input { width: auto; margin: 0; accent-color: var(--accent); }
 .whats-new footer { display: flex; justify-content: flex-end; margin-top: 18px; }
 .championship { background: #3e3a33; color: #ddd0bb; align-self: flex-start; margin-left: 0; }
 .race-field input { border-color: var(--accent); }
+
+/* ---------- Pegar datos ---------- */
+.paste-dialog textarea { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 13px; line-height: 1.5; }
+.detected { width: 100%; border-collapse: collapse; }
+.detected td { padding: 5px 6px; border-bottom: 1px solid #333; vertical-align: top; }
+.detected tr.off { opacity: .4; }
+.detected-check { width: 28px; }
+.detected-check input { accent-color: var(--accent); }
+.detected-label { width: 170px; font-size: 12px; }
+.detected-value { word-break: break-word; }
+.picker-footer { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #333; }
+.paste-row { align-items: flex-end; }
+.paste-row button { margin-bottom: 1px; }
