@@ -30,8 +30,10 @@ tarifas, presupuestos y facturas. Electron + React + TypeScript + SQLite. Ya exi
 
 ### AppClase
 App de escritorio para **estudiantes**: guardar los trabajos de clase y trabajar con ellos desde el
-ordenador. Misma tecnología que FotoGestor (Electron + React + TypeScript + SQLite) para compartir
-el módulo de licencias y la forma de actualizar. Por definir (ver §10).
+ordenador. Admite **todo tipo de archivos** (documentos, PDF, imágenes, presentaciones, vídeos…).
+Misma tecnología que FotoGestor (Electron + React + TypeScript + SQLite) para compartir el módulo de
+licencias y la forma de actualizar. La organización de los trabajos y la edad mínima se decidirán más
+adelante (ver §11).
 
 ### AdminApps
 Panel web privado para controlar usuarios, suscripciones, dispositivos, versiones, avisos y
@@ -206,8 +208,8 @@ del servidor escriben estados de suscripción.
 ## 11. Pendiente de decidir
 
 1. Si se deja entrar con aviso cuando el **servidor** falla (§5.6).
-2. AppClase: qué tipo de trabajos guarda (documentos, PDF, fotos, apuntes…), cómo se organizan
-   (asignaturas, cursos, fechas…) y edad mínima de los usuarios.
+2. AppClase (aplazado): cómo se organizan los trabajos (asignaturas, cursos, fechas…) y edad mínima
+   de los usuarios.
 3. ¿Paquete con las dos apps a precio reducido?
 4. Nombre comercial o titular que figurará como vendedor en Paddle (autónomo o empresa).
 5. Qué hacer con los usuarios actuales de FotoGestor gratuito, si los hay.
