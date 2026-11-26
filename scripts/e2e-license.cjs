@@ -99,6 +99,11 @@ function check(name, ok, detail = '') {
     check('con suscripción activa desaparece el aviso', /Suscripción activa/.test(await win.textContent('.license-status')))
     r = await call(win, 'clients.save', { kind: 'particular', name: 'Benito Pruebas' })
     check('con suscripción activa se puede editar', r.ok, r.e)
+    await app.evaluate(({ shell }) => { globalThis.__opened = []; shell.openExternal = async (u) => { globalThis.__opened.push(u) } })
+    await win.click('.account button:has-text("Gestionar suscripción")')
+    await win.waitForTimeout(500)
+    const opened = await app.evaluate(() => globalThis.__opened)
+    check('«Gestionar suscripción» abre el portal de cliente', opened[0] === 'https://portal.example.com/fotogestor', String(opened))
 
     // --- Renovación de la sesión ---
     mock.expireAccess()

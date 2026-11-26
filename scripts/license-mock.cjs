@@ -49,6 +49,8 @@ function startMock({ port = 0, maxDevices = 2 } = {}) {
       const user = () => users.get(access.get(bearer))
       log.push(`${req.method} ${url.pathname}${url.search}`)
       if (!req.headers.apikey) return send(401, { message: 'No API key found in request' })
+      // Como Supabase con las claves nuevas: la clave pública nunca va en Authorization.
+      if (bearer && bearer === req.headers.apikey) return send(401, { message: 'Invalid JWT' })
 
       switch (url.pathname) {
         case '/auth/v1/signup': {
@@ -81,7 +83,11 @@ function startMock({ port = 0, maxDevices = 2 } = {}) {
               devices: [...u.devices].map(([did, d]) => ({ id: did, name: d.name, last_seen: d.last_seen })) })
           }
           u.devices.set(id, { name: body.device_name, last_seen: new Date().toISOString() })
-          return send(200, { token: licenseToken(u, id), checkout_url: 'https://checkout.example.com/fotogestor', portal_url: 'https://portal.example.com/fotogestor' })
+          return send(200, { token: licenseToken(u, id), checkout_url: 'https://checkout.example.com/fotogestor', can_manage: u.status !== 'trial' })
+        }
+        case '/functions/v1/portal-session': {
+          if (!user()) return send(401, { message: 'Invalid JWT' })
+          return send(200, { url: 'https://portal.example.com/fotogestor' })
         }
         case '/functions/v1/device-deactivate': {
           const u = user()

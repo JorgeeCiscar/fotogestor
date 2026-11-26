@@ -221,8 +221,9 @@ del servidor escriben estados de suscripción.
 Implementado en la app (cliente) en `src/main/license/`. El servidor de pruebas
 `scripts/license-mock.cjs` cumple este contrato y sirve de referencia para las funciones de Supabase.
 
-Todas las peticiones son `POST` con JSON y llevan la cabecera `apikey: <clave anon>`. Las que
-necesitan usuario llevan `Authorization: Bearer <access_token>`.
+Todas las peticiones son `POST` con JSON y llevan la cabecera `apikey: <clave publicable>`
+(`sb_publishable_…`). Las que necesitan usuario llevan además `Authorization: Bearer <access_token>`;
+la clave publicable nunca va en `Authorization`, porque no es un JWT.
 
 ### Cuentas (Supabase Auth, sin cambios)
 
@@ -242,7 +243,7 @@ Cuerpo: `{ app, version, device_id, device_name, os }`.
 
 | Respuesta | Significado | Qué hace la app |
 |---|---|---|
-| 200 `{ token, checkout_url, portal_url }` | Licencia emitida | Verifica el token y entra (completa o solo lectura) |
+| 200 `{ token, checkout_url, can_manage }` | Licencia emitida | Verifica el token y entra (completa o solo lectura) |
 | 401 | Token de acceso caducado o no válido | Renueva la sesión y repite; si falla, pide iniciar sesión |
 | 403 `{ error: "blocked", message }` | Cuenta suspendida | Muestra el mensaje y no deja entrar |
 | 409 `{ error: "device_limit", max, devices: [{ id, name, last_seen }] }` | Más de `max` ordenadores | Pide desactivar uno |
@@ -251,8 +252,8 @@ Cuerpo: `{ app, version, device_id, device_name, os }`.
 Al primer `license-check` de un usuario sin suscripción ni prueba previa en esa app y ese
 ordenador, el servidor crea la prueba de 7 días.
 
-`checkout_url`: enlace al pago de Paddle con el email y el id de usuario ya incluidos.
-`portal_url`: portal de cliente de Paddle (cambiar tarjeta, cancelar). Ambos opcionales.
+`checkout_url`: página de pago (Paddle.js) con la app, el id de usuario y el email ya incluidos.
+`can_manage`: el usuario tiene cliente en Paddle y puede abrir el portal (ver `portal-session`).
 
 ### Token de licencia
 
@@ -271,6 +272,11 @@ otro usuario o caducados (margen de 5 minutos).
 
 - `cancelled`: cancelada pero todavía dentro del periodo pagado; `expired`: ya terminada.
 - Caducidad recomendada del token: 6 horas. La app vuelve a comprobar cada hora.
+
+### `/functions/v1/portal-session`
+
+Cuerpo: `{ app }`. Respuesta: `{ url }`, enlace de un solo uso al portal de cliente de Paddle
+(cambiar tarjeta, cancelar). Se pide al pulsar «Gestionar suscripción» porque caduca enseguida.
 
 ### `/functions/v1/device-deactivate`
 

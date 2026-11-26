@@ -27,8 +27,10 @@ export interface Session {
 
 export interface CheckResult {
   token: string
+  /** Página de pago con el usuario ya identificado. */
   checkout_url?: string | null
-  portal_url?: string | null
+  /** Si el usuario tiene suscripción en Paddle y puede abrir el portal de cliente. */
+  can_manage?: boolean
 }
 
 /** No se pudo conectar (sin internet, DNS, tiempo agotado…). */
@@ -54,10 +56,12 @@ export class LicenseServer {
     try {
       res = await this.fetchImpl(this.cfg.url.replace(/\/+$/, '') + path, {
         method: 'POST',
+        // Las claves nuevas de Supabase (sb_publishable_…) no son JWT: van solo en `apikey`.
+        // `Authorization` lleva únicamente el token del usuario.
         headers: {
           'content-type': 'application/json',
           apikey: this.cfg.anonKey,
-          authorization: `Bearer ${bearer ?? this.cfg.anonKey}`
+          ...(bearer ? { authorization: `Bearer ${bearer}` } : {})
         },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(TIMEOUT_MS)
@@ -113,6 +117,13 @@ export class LicenseServer {
     }, accessToken)
     if (typeof j.token !== 'string') throw new Error('El servidor no ha enviado la licencia')
     return j as unknown as CheckResult
+  }
+
+  /** Enlace de un solo uso al portal de cliente de Paddle (cambiar tarjeta, cancelar). */
+  async portal(accessToken: string): Promise<string> {
+    const j = await this.call('/functions/v1/portal-session', { app: this.cfg.appId }, accessToken)
+    if (typeof j.url !== 'string') throw new Error('El servidor no ha enviado el enlace del portal')
+    return j.url
   }
 
   async deactivate(accessToken: string, deviceId: string): Promise<void> {

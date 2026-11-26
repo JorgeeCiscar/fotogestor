@@ -48,7 +48,7 @@ export class LicenseManager {
   private state: LicenseState = { kind: 'checking' }
   private session: Session | null = null
   private dev: Device | null = null
-  private urls: { checkout: string | null; portal: string | null } = { checkout: null, portal: null }
+  private urls: { checkout: string | null; canManage: boolean } = { checkout: null, canManage: false }
   private timer: ReturnType<typeof setInterval> | null = null
   private running: Promise<LicenseState> | null = null
 
@@ -57,7 +57,17 @@ export class LicenseManager {
   getState(): LicenseState { return this.state }
   access(): Access { return accessFor(this.state) }
   checkoutUrl(): string | null { return this.urls.checkout }
-  portalUrl(): string | null { return this.urls.portal }
+
+  /** Pide al servidor un enlace al portal de cliente (caduca enseguida, por eso no se guarda). */
+  async portalUrl(): Promise<string | null> {
+    if (!this.urls.canManage) return null
+    try {
+      return await this.o.server.portal((await this.freshSession()).access_token)
+    } catch (e) {
+      this.o.log?.(`portal: ${e instanceof Error ? e.message : String(e)}`)
+      return null
+    }
+  }
 
   private set(s: LicenseState): LicenseState {
     this.state = s
@@ -122,11 +132,11 @@ export class LicenseManager {
         res = await this.o.server.check(s.access_token, device, this.o.version)
       }
       const claims = verifyLicenseToken(res.token, this.o.publicKey, { app: this.o.appId, device: device.id, sub: s.user.id })
-      this.urls = { checkout: res.checkout_url ?? null, portal: res.portal_url ?? null }
+      this.urls = { checkout: res.checkout_url ?? null, canManage: !!res.can_manage }
       if (claims.min_version && compareVersions(this.o.version, claims.min_version) < 0) {
         return this.set({ kind: 'update-required', minVersion: claims.min_version, version: this.o.version })
       }
-      return this.set({ ...licensedState(claims, { checkout: !!this.urls.checkout, portal: !!this.urls.portal }), checkedAt: new Date().toISOString() })
+      return this.set({ ...licensedState(claims, { checkout: !!this.urls.checkout, portal: this.urls.canManage }), checkedAt: new Date().toISOString() })
     } catch (e) {
       return this.fail(e)
     }
@@ -206,7 +216,7 @@ export class LicenseManager {
     const s = this.session
     if (s) await this.o.server.logout(s.access_token).catch(() => undefined)
     await this.saveSession(null)
-    this.urls = { checkout: null, portal: null }
+    this.urls = { checkout: null, canManage: false }
     this.set({ kind: 'signed-out', email: s?.user.email })
   }
 
