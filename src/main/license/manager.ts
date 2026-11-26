@@ -9,6 +9,14 @@ import type { SessionStore } from './store'
 import { verifyLicenseToken } from './token'
 
 const RECHECK_MS = 60 * 60 * 1000 // cada hora con la app abierta
+/** Tras abrir el pago o el portal: comprobar cada 30 s durante 20 min, hasta que cambie algo. */
+const WATCH_EVERY_MS = 30_000
+const WATCH_FOR_MS = 20 * 60 * 1000
+
+/** Lo que cambia al suscribirse, cancelar o renovar. */
+function stateKey(s: LicenseState): string {
+  return s.kind === 'licensed' ? `${s.status}:${s.mode}:${s.periodEnd}` : s.kind
+}
 
 export interface ManagerOptions {
   appId: string
@@ -51,6 +59,7 @@ export class LicenseManager {
   private urls: { checkout: string | null; canManage: boolean } = { checkout: null, canManage: false }
   private timer: ReturnType<typeof setInterval> | null = null
   private running: Promise<LicenseState> | null = null
+  private watch: ReturnType<typeof setInterval> | null = null
 
   constructor(private o: ManagerOptions) {}
 
@@ -88,6 +97,28 @@ export class LicenseManager {
 
   stop(): void {
     if (this.timer) clearInterval(this.timer)
+    this.stopWatching()
+  }
+
+  private stopWatching(): void {
+    if (this.watch) clearInterval(this.watch)
+    this.watch = null
+  }
+
+  /**
+   * Después de abrir el pago o el portal, comprueba a menudo para que la suscripción se active
+   * (o se refleje la cancelación) en cuanto llegue el aviso de Paddle al servidor.
+   */
+  watchForChanges(): void {
+    this.stopWatching()
+    const before = stateKey(this.state)
+    const until = Date.now() + WATCH_FOR_MS
+    this.watch = setInterval(() => {
+      void this.check().then((s) => {
+        if (Date.now() > until || stateKey(s) !== before) this.stopWatching()
+      })
+    }, WATCH_EVERY_MS)
+    this.watch.unref?.()
   }
 
   private async saveSession(s: Session | null): Promise<void> {

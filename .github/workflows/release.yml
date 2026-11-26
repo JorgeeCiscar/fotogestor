@@ -80,7 +80,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Licencias: se activan al definir estas variables del repositorio (Settings → Secrets and
+      # variables → Actions → Variables). Sin ellas, la app se publica sin licencias, como hasta ahora.
       - run: npx electron-vite build
+        env:
+          MAIN_VITE_LICENSE_URL: ${{ vars.LICENSE_URL }}
+          MAIN_VITE_LICENSE_ANON_KEY: ${{ vars.LICENSE_PUBLISHABLE_KEY }}
+          MAIN_VITE_LICENSE_PUBLIC_KEY: ${{ vars.LICENSE_PUBLIC_KEY }}
       - name: Compilar y publicar el instalador
         run: npx electron-builder --win --x64 --publish always
         env:

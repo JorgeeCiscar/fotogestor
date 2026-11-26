@@ -85,7 +85,10 @@ servidor están en [`docs/licencias-y-adminapps.md`](docs/licencias-y-adminapps.
 - **Desactivado por defecto**: si la app se compila sin servidor de licencias configurado, funciona
   como siempre, sin cuenta ni límites.
 - Para activarlo en la app instalada, compila con `MAIN_VITE_LICENSE_URL`, `MAIN_VITE_LICENSE_ANON_KEY`
-  y `MAIN_VITE_LICENSE_PUBLIC_KEY` (por ejemplo en un fichero `.env.production`, que no se sube al repositorio).
+  y `MAIN_VITE_LICENSE_PUBLIC_KEY`. En la publicación automática salen de las variables del repositorio
+  `LICENSE_URL`, `LICENSE_PUBLISHABLE_KEY` y `LICENSE_PUBLIC_KEY` (Settings → Secrets and variables →
+  Actions → Variables): **la primera versión publicada con ellas ya pide cuenta a todos los usuarios**.
+- El servidor (Supabase y Paddle) está en el repositorio `adminapps`.
 - Con licencias, la app pide cuenta y conexión al abrirse; sin suscripción vigente pasa a **solo lectura**,
   que se aplica en el proceso principal a cada llamada IPC.
 - Servidor de pruebas: `node scripts/license-mock.cjs` imprime las variables `FOTOGESTOR_LICENSE_*`

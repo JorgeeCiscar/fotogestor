@@ -94,8 +94,14 @@ export function setupLicense(): LicenseManager | null {
   ipcMain.handle('license:recover', (_e, email: string) => manager?.recover(String(email ?? '')) ?? { ok: false })
   ipcMain.handle('license:logout', () => manager?.logout())
   ipcMain.handle('license:deactivateDevice', (_e, id: string) => manager?.deactivateDevice(String(id)) ?? { ok: false })
-  ipcMain.handle('license:openCheckout', () => openExternalSafe(manager?.checkoutUrl() ?? null))
-  ipcMain.handle('license:openPortal', async () => openExternalSafe((await manager?.portalUrl()) ?? null))
+  ipcMain.handle('license:openCheckout', () => {
+    openExternalSafe(manager?.checkoutUrl() ?? null)
+    manager?.watchForChanges()
+  })
+  ipcMain.handle('license:openPortal', async () => {
+    openExternalSafe((await manager?.portalUrl()) ?? null)
+    manager?.watchForChanges()
+  })
 
   if (manager) void manager.start()
   return manager
