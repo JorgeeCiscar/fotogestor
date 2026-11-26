@@ -1,0 +1,44 @@
+# Instalador de PRUEBA de las licencias: «FotoGestor Prueba», conectado al servidor de licencias
+# (Supabase + Paddle en modo de pruebas). Se instala aparte de FotoGestor, con sus propios datos,
+# y NO se publica: se descarga desde la ejecución, en «Artifacts».
+name: Instalador de prueba (licencias)
+
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['src/**', 'package.json', 'electron-builder.yml', '.github/workflows/instalador-prueba.yml']
+  workflow_dispatch:
+
+jobs:
+  instalador:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Datos públicos del servidor de licencias (ninguno es secreto).
+      - run: npx electron-vite build
+        env:
+          MAIN_VITE_LICENSE_URL: https://dvqgknryosgdmriplmim.supabase.co
+          MAIN_VITE_LICENSE_ANON_KEY: sb_publishable_ZxnQ14Aw9C8jksNSXJ55hA_cIgjywLJ
+          MAIN_VITE_LICENSE_PUBLIC_KEY: MCowBQYDK2VwAyEAOT1xCMN2z3euD24FptXDuabCZu8p2/hBMYtp0GCjyXc=
+      - name: Compilar «FotoGestor Prueba»
+        shell: bash
+        run: >
+          npx electron-builder --win --x64 --publish never
+          -c.appId=com.fotogestor.prueba
+          -c.productName="FotoGestor Prueba"
+          -c.extraMetadata.name=fotogestor-prueba
+          -c.extraMetadata.productName="FotoGestor Prueba"
+          -c.nsis.shortcutName="FotoGestor Prueba"
+          -c.nsis.uninstallDisplayName="FotoGestor Prueba"
+          -c.nsis.artifactName='FotoGestor-Prueba-Setup-${version}.exe'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FotoGestor-Prueba
+          path: dist/FotoGestor-Prueba-Setup-*.exe
+          if-no-files-found: error
+          retention-days: 14
