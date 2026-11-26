@@ -378,3 +378,30 @@ label.inline select { text-transform: none; letter-spacing: 0; color: var(--text
   background: var(--panel); border-top: 1px solid var(--line); }
 .folder-viewer-bar button { font-size: 18px; line-height: 1; }
 .folder-bar.quiet { justify-content: center; }
+
+/* ---------- Licencias ---------- */
+.gate { height: 100%; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--bg); }
+.gate-card { width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 28px; display: flex; flex-direction: column; gap: 12px; }
+.gate-card h3 { margin: 4px 0 0; font-size: 16px; font-weight: 500; }
+.gate-card p { margin: 0; line-height: 1.5; }
+.gate-brand { padding: 0 0 8px; font-size: 18px; }
+.gate-form { gap: 12px; }
+.gate-tabs { display: flex; gap: 4px; }
+.gate-tabs button { flex: 1; background: transparent; }
+.gate-tabs button.active { background: var(--panel-3); border-color: #585858; }
+.gate-msg { padding: 8px 10px; border-radius: var(--radius); font-size: 13px; }
+.gate-msg.error { background: rgba(209, 96, 94, .15); color: #f0a3a1; }
+.gate-msg.info { background: rgba(38, 128, 235, .15); color: #a9cbf5; }
+.gate-actions { display: flex; gap: 8px; }
+.gate-devices { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.gate-devices li { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  background: var(--panel-2); border-radius: var(--radius); padding: 8px 10px; }
+.gate-devices li div { display: flex; flex-direction: column; }
+.license-banner { padding: 10px; border-radius: var(--radius); background: var(--panel-2); display: flex; flex-direction: column; gap: 6px; }
+.license-banner button { width: 100%; }
+.license-banner.readonly { border: 1px solid var(--reject); }
+.license-banner.warn { border: 1px solid #c9a227; }
+.account-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.account .update-row { flex-wrap: wrap; }
+.account .update-row > div:first-child { flex: 1 1 260px; }

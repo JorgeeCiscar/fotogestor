@@ -1,5 +1,6 @@
 export const RACE_TYPE = 'Carrera'
 import type { ChangelogEntry } from './changelog'
+import type { LicenseApi } from './license'
 
 export type SessionStatus = 'planificada' | 'realizada' | 'editando' | 'entregada'
 export const SESSION_STATUSES: SessionStatus[] = ['planificada', 'realizada', 'editando', 'entregada']
@@ -437,5 +438,6 @@ export interface Api {
     whatsNew(): Promise<{ version: string; entries: ChangelogEntry[] } | null>
     whatsNewSeen(): Promise<void>
   }
+  license: LicenseApi
   mediaUrl(key: string): string
 }

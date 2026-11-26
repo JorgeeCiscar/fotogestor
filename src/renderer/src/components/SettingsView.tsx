@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import type { Settings } from '../../../shared/types'
 import { api, errorMessage } from '../util'
 import { describeUpdate, useUpdateStatus } from './UpdateBanner'
+import { AccountSection } from './License'
 
 export default function SettingsView() {
   const [form, setForm] = useState<Settings | null>(null)
@@ -27,6 +28,7 @@ export default function SettingsView() {
   return (
     <div className="page narrow">
       <header className="page-header"><h1>Ajustes</h1></header>
+      <AccountSection />
       <form className="form" onSubmit={submit}>
         <h2>Tu negocio</h2>
         <p className="muted small">Aparece en presupuestos, facturas y en las galerías para clientes.</p>

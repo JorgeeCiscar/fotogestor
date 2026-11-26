@@ -6,6 +6,7 @@ import { openDatabase } from './db'
 import { registerIpc } from './ipc'
 import { LocalStorage } from './storage'
 import { setupUpdater } from './updater'
+import { setupLicense } from './license'
 import { stopImageWorker } from './imageJobs'
 
 // Esquema propio para servir miniaturas/previsualizaciones de la biblioteca de forma segura.
@@ -55,11 +56,13 @@ app.whenReady().then(() => {
     }
   })
 
+  // Las licencias van primero: vigilan todas las llamadas IPC que se registran después.
+  const license = setupLicense()
   registerIpc(db, storage)
   setupUpdater(db)
   createWindow()
   app.on('activate', () => BrowserWindow.getAllWindows().length === 0 && createWindow())
-  app.on('will-quit', () => { stopImageWorker(); db.close() })
+  app.on('will-quit', () => { license?.stop(); stopImageWorker(); db.close() })
 })
 
 app.on('window-all-closed', () => {

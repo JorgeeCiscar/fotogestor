@@ -14,6 +14,7 @@ import SettingsView from './components/SettingsView'
 import TariffsView from './components/TariffsView'
 import UpdateBanner, { AppVersion } from './components/UpdateBanner'
 import WhatsNew from './components/WhatsNew'
+import { LicenseBanner, LicenseGate } from './components/License'
 
 export type View =
   | { name: 'dashboard' }
@@ -58,6 +59,7 @@ export default function App() {
   }, [])
 
   return (
+    <LicenseGate>
     <div className="app">
       <aside className="sidebar">
         <div className="brand"><span className="brand-mark">◉</span> FotoGestor</div>
@@ -69,6 +71,7 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebar-bottom">
+          <LicenseBanner />
           <UpdateBanner />
           <AppVersion />
         </div>
@@ -93,5 +96,6 @@ export default function App() {
       </main>
       <WhatsNew />
     </div>
+    </LicenseGate>
   )
 }

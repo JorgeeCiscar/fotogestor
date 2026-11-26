@@ -72,6 +72,18 @@ const api: Api = {
     whatsNew: invoke('app:whatsNew'),
     whatsNewSeen: invoke('app:whatsNewSeen')
   },
+  license: {
+    state: invoke('license:state'),
+    onState: (cb) => subscribe('license:state', cb),
+    refresh: invoke('license:refresh'),
+    login: invoke('license:login'),
+    signup: invoke('license:signup'),
+    recover: invoke('license:recover'),
+    logout: invoke('license:logout'),
+    deactivateDevice: invoke('license:deactivateDevice'),
+    openCheckout: invoke('license:openCheckout'),
+    openPortal: invoke('license:openPortal')
+  },
   mediaUrl: (key) => `foto://media/${encodeURIComponent(key)}`
 } as Api
 

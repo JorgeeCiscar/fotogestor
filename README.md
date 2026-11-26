@@ -66,7 +66,8 @@ npm run dev        # arranca la app con recarga en caliente
 npm run typecheck
 npm run test:unit  # pruebas del analizador de datos pegados
 npm run test:e2e   # prueba de extremo a extremo con Playwright
-npm test           # las tres: tipos, unitarias y E2E
+npm run test:e2e-license  # E2E de licencias contra un servidor de pruebas
+npm test           # todas: tipos, unitarias y las dos E2E
 npm run dist:win   # genera dist/FotoGestor-Setup-<versión>.exe
 ```
 
@@ -74,6 +75,21 @@ npm run dist:win   # genera dist/FotoGestor-Setup-<versión>.exe
   `E2E_RAW=/ruta/foto.NEF` añade un RAW real a la prueba.
 - `dist:win` desde Linux necesita Wine (`apt install wine wine32:i386 wine64`). En Windows funciona directamente.
 - El instalador no está firmado digitalmente: Windows SmartScreen mostrará «Editor desconocido».
+
+## Licencias (suscripción)
+
+El control de licencias está en `src/main/license/` (proceso principal) y `src/shared/license.ts`
+(qué llamadas IPC se permiten en cada estado). La especificación completa y el contrato con el
+servidor están en [`docs/licencias-y-adminapps.md`](docs/licencias-y-adminapps.md).
+
+- **Desactivado por defecto**: si la app se compila sin servidor de licencias configurado, funciona
+  como siempre, sin cuenta ni límites.
+- Para activarlo en la app instalada, compila con `MAIN_VITE_LICENSE_URL`, `MAIN_VITE_LICENSE_ANON_KEY`
+  y `MAIN_VITE_LICENSE_PUBLIC_KEY` (por ejemplo en un fichero `.env.production`, que no se sube al repositorio).
+- Con licencias, la app pide cuenta y conexión al abrirse; sin suscripción vigente pasa a **solo lectura**,
+  que se aplica en el proceso principal a cada llamada IPC.
+- Servidor de pruebas: `node scripts/license-mock.cjs` imprime las variables `FOTOGESTOR_LICENSE_*`
+  con las que arrancar `npm run dev` contra él. `npm run test:e2e-license` prueba todo el flujo.
 
 ## Actualizaciones automáticas
 

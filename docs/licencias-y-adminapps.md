@@ -213,3 +213,85 @@ del servidor escriben estados de suscripción.
 3. ¿Paquete con las dos apps a precio reducido?
 4. Nombre comercial o titular que figurará como vendedor en Paddle (autónomo o empresa).
 5. Qué hacer con los usuarios actuales de FotoGestor gratuito, si los hay.
+
+---
+
+## Apéndice A. Contrato entre las apps y el servidor
+
+Implementado en la app (cliente) en `src/main/license/`. El servidor de pruebas
+`scripts/license-mock.cjs` cumple este contrato y sirve de referencia para las funciones de Supabase.
+
+Todas las peticiones son `POST` con JSON y llevan la cabecera `apikey: <clave anon>`. Las que
+necesitan usuario llevan `Authorization: Bearer <access_token>`.
+
+### Cuentas (Supabase Auth, sin cambios)
+
+| Ruta | Cuerpo | Respuesta |
+|---|---|---|
+| `/auth/v1/signup` | `{ email, password }` | Sesión, o solo el usuario si hay que confirmar el email |
+| `/auth/v1/token?grant_type=password` | `{ email, password }` | Sesión |
+| `/auth/v1/token?grant_type=refresh_token` | `{ refresh_token }` | Sesión nueva |
+| `/auth/v1/recover` | `{ email }` | `{}` |
+| `/auth/v1/logout` | — | 204 |
+
+Sesión: `{ access_token, refresh_token, expires_in, expires_at, user: { id, email } }`.
+
+### `/functions/v1/license-check`
+
+Cuerpo: `{ app, version, device_id, device_name, os }`.
+
+| Respuesta | Significado | Qué hace la app |
+|---|---|---|
+| 200 `{ token, checkout_url, portal_url }` | Licencia emitida | Verifica el token y entra (completa o solo lectura) |
+| 401 | Token de acceso caducado o no válido | Renueva la sesión y repite; si falla, pide iniciar sesión |
+| 403 `{ error: "blocked", message }` | Cuenta suspendida | Muestra el mensaje y no deja entrar |
+| 409 `{ error: "device_limit", max, devices: [{ id, name, last_seen }] }` | Más de `max` ordenadores | Pide desactivar uno |
+| 5xx / sin respuesta | Servidor caído o sin internet | Al abrir: no deja entrar. Con la app abierta: sigue trabajando |
+
+Al primer `license-check` de un usuario sin suscripción ni prueba previa en esa app y ese
+ordenador, el servidor crea la prueba de 7 días.
+
+`checkout_url`: enlace al pago de Paddle con el email y el id de usuario ya incluidos.
+`portal_url`: portal de cliente de Paddle (cambiar tarjeta, cancelar). Ambos opcionales.
+
+### Token de licencia
+
+`base64url(JSON).base64url(firma)`, firmado con **Ed25519** sobre la primera parte tal cual.
+La app lleva la clave pública (DER SPKI en base64) y rechaza tokens de otra app, otro ordenador,
+otro usuario o caducados (margen de 5 minutos).
+
+```json
+{
+  "v": 1, "app": "fotogestor", "sub": "<id usuario>", "email": "…", "device": "<device_id>",
+  "status": "trial | active | past_due | cancelled | expired", "plan": "mensual | anual | null",
+  "trial_end": "ISO 8601 | null", "period_end": "ISO 8601 | null",
+  "features": [], "min_version": "0.17.0 | null", "iat": 1764150000, "exp": 1764171600
+}
+```
+
+- `cancelled`: cancelada pero todavía dentro del periodo pagado; `expired`: ya terminada.
+- Caducidad recomendada del token: 6 horas. La app vuelve a comprobar cada hora.
+
+### `/functions/v1/device-deactivate`
+
+Cuerpo: `{ app, device_id }`. Respuestas: 200, 401 o 429 (`device_swap_limit`, demasiados cambios
+de ordenador este mes).
+
+## Apéndice B. Estado de la fase 1
+
+Hecho en FotoGestor:
+- Pantalla de acceso: crear cuenta (empieza la prueba), iniciar sesión, recuperar la contraseña.
+- Comprobación al abrir y cada hora; sin conexión al abrir no deja entrar; si se pierde con la app
+  abierta, se sigue trabajando.
+- Modo solo lectura aplicado en el proceso principal a cada llamada IPC (ver
+  `src/shared/license.ts`; una prueba unitaria obliga a clasificar cada llamada nueva).
+- Límite de 2 ordenadores, versión mínima obligatoria, cuenta bloqueada.
+- Avisos de prueba, pago pendiente, fin de la suscripción y solo lectura; apartado «Cuenta» en Ajustes.
+- Sesión guardada cifrada con el almacén del sistema (DPAPI en Windows).
+- Desactivado si la app se compila sin servidor configurado: la versión publicada no cambia.
+
+Pendiente (necesita las cuentas de Supabase y Paddle y el repositorio `adminapps`):
+- Tablas, Row Level Security y funciones `license-check` y `device-deactivate` en Supabase.
+- Webhook de Paddle que actualiza las suscripciones.
+- Generar el par de claves Ed25519 (la privada solo en Supabase) y compilar la app con la URL,
+  la clave anon y la clave pública.
